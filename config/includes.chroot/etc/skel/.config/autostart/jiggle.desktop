@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Shake Cursor
+Exec=jiggle
+Hidden=false
+NoDisplay=false
+X-GNOME-Autostart-enabled=true

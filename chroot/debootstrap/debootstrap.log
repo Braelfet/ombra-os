@@ -1,0 +1,35 @@
+2026-09-27 22:58:34 URL:http://deb.debian.org/debian/dists/testing/InRelease [150769/150769] -> "/root/ombra_iso/chroot/var/lib/apt/lists/partial/deb.debian.org_debian_dists_testing_InRelease" [1]
+gpgv: Signature made Sun Sep 27 20:15:35 2026 UTC
+gpgv:                using RSA key 4CB50190207B4758A3F73A796ED0E7B82643E131
+gpgv: Good signature from "Debian Archive Automatic Signing Key (12/bookworm) <ftpmaster@debian.org>"
+gpgv: Signature made Sun Sep 27 20:15:39 2026 UTC
+gpgv:                using RSA key B8E5F13176D2A7A75220028078DBA3BC47EF2265
+gpgv: Good signature from "Debian Archive Automatic Signing Key (13/trixie) <ftpmaster@debian.org>"
+2026-09-27 22:58:45 URL:http://deb.debian.org/debian/dists/testing/main/binary-amd64/by-hash/SHA256/d6689a63b97bdaf3ded7590f80d389347298e4c291791789141391accf29d279 [9993660/9993660] -> "/root/ombra_iso/chroot/var/lib/apt/lists/partial/deb.debian.org_debian_dists_testing_main_binary-amd64_Packages.xz" [1]
+2026-09-27 22:59:21 URL:http://deb.debian.org/debian/pool/main/a/adduser/adduser_3.159_all.deb [229720/229720] -> "/root/ombra_iso/chroot//var/cache/apt/archives/partial/adduser_3.159_all.deb" [1]
+2026-09-27 22:59:27 URL:http://deb.debian.org/debian/pool/main/a/apt/apt_3.3.3_amd64.deb [1567912/1567912] -> "/root/ombra_iso/chroot//var/cache/apt/archives/partial/apt_3.3.3_amd64.deb" [1]
+2026-09-27 22:59:32 URL:http://deb.debian.org/debian/pool/main/a/apt/apt-utils_3.3.3_amd64.deb [364260/364260] -> "/root/ombra_iso/chroot//var/cache/apt/archives/partial/apt-utils_3.3.3_amd64.deb" [1]
+2026-09-27 22:59:38 URL:http://deb.debian.org/debian/pool/main/b/base-files/base-files_14.2_amd64.deb [87960/87960] -> "/root/ombra_iso/chroot//var/cache/apt/archives/partial/base-files_14.2_amd64.deb" [1]
+2026-09-27 22:59:44 URL:http://deb.debian.org/debian/pool/main/b/base-passwd/base-passwd_3.6.8_amd64.deb [54624/54624] -> "/root/ombra_iso/chroot//var/cache/apt/archives/partial/base-passwd_3.6.8_amd64.deb" [1]
+2026-09-27 22:59:49 URL:http://deb.debian.org/debian/pool/main/b/bash/bash_5.3-4_amd64.deb [1581708/1581708] -> "/root/ombra_iso/chroot//var/cache/apt/archives/partial/bash_5.3-4_amd64.deb" [1]
+2026-09-27 22:59:55 URL:http://deb.debian.org/debian/pool/main/u/util-linux/bsdutils_2.42.3-1_amd64.deb [92848/92848] -> "/root/ombra_iso/chroot//var/cache/apt/archives/partial/bsdutils_1%3a2.42.3-1_amd64.deb" [1]
+2026-09-27 23:00:01 URL:http://deb.debian.org/debian/pool/main/c/coreutils/coreutils_9.10-1_amd64.deb [3142356/3142356] -> "/root/ombra_iso/chroot//var/cache/apt/archives/partial/coreutils_9.10-1_amd64.deb" [1]
+2026-09-27 23:00:07 URL:http://deb.debian.org/debian/pool/main/c/cpio/cpio_2.15+dfsg-2.1_amd64.deb [254448/254448] -> "/root/ombra_iso/chroot//var/cache/apt/archives/partial/cpio_2.15+dfsg-2.1_amd64.deb" [1]
+2026-09-27 23:00:12 URL:http://deb.debian.org/debian/pool/main/c/cron/cron_3.0pl1-210_amd64.deb [86548/86548] -> "/root/ombra_iso/chroot//var/cache/apt/archives/partial/cron_3.0pl1-210_amd64.deb" [1]
+2026-09-27 23:00:18 URL:http://deb.debian.org/debian/pool/main/c/cron/cron-daemon-common_3.0pl1-210_all.deb [15840/15840] -> "/root/ombra_iso/chroot//var/cache/apt/archives/partial/cron-daemon-common_3.0pl1-210_all.deb" [1]
+2026-09-27 23:00:23 URL:http://deb.debian.org/debian/pool/main/d/dash/dash_0.5.12-12_amd64.deb [98504/98504] -> "/root/ombra_iso/chroot//var/cache/apt/archives/partial/dash_0.5.12-12_amd64.deb" [1]
+2026-09-27 23:00:29 URL:http://deb.debian.org/debian/pool/main/d/debconf/debconf_1.5.92_all.deb [122512/122512] -> "/root/ombra_iso/chroot//var/cache/apt/archives/partial/debconf_1.5.92_all.deb" [1]
+2026-09-27 23:00:34 URL:http://deb.debian.org/debian/pool/main/d/debconf/debconf-i18n_1.5.92_all.deb [217380/217380] -> "/root/ombra_iso/chroot//var/cache/apt/archives/partial/debconf-i18n_1.5.92_all.deb" [1]
+2026-09-27 23:00:40 URL:http://deb.debian.org/debian/pool/main/d/debian-archive-keyring/debian-archive-keyring_2025.1_all.deb [179244/179244] -> "/root/ombra_iso/chroot//var/cache/apt/archives/partial/debian-archive-keyring_2025.1_all.deb" [1]
+2026-09-27 23:00:45 URL:http://deb.debian.org/debian/pool/main/d/debianutils/debianutils_5.24_amd64.deb [93316/93316] -> "/root/ombra_iso/chroot//var/cache/apt/archives/partial/debianutils_5.24_amd64.deb" [1]
+2026-09-27 23:00:51 URL:http://deb.debian.org/debian/pool/main/d/dhcpcd/dhcpcd-base_10.5.2-5_amd64.deb [221428/221428] -> "/root/ombra_iso/chroot//var/cache/apt/archives/partial/dhcpcd-base_1%3a10.5.2-5_amd64.deb" [1]
+2026-09-27 23:00:57 URL:http://deb.debian.org/debian/pool/main/d/diffutils/diffutils_3.12-1_amd64.deb [404764/404764] -> "/root/ombra_iso/chroot//var/cache/apt/archives/partial/diffutils_1%3a3.12-1_amd64.deb" [1]
+2026-09-27 23:01:02 URL:http://deb.debian.org/debian/pool/main/d/dmidecode/dmidecode_3.7-1_amd64.deb [70928/70928] -> "/root/ombra_iso/chroot//var/cache/apt/archives/partial/dmidecode_3.7-1_amd64.deb" [1]
+2026-09-27 23:01:08 URL:http://deb.debian.org/debian/pool/main/d/dpkg/dpkg_1.23.11_amd64.deb [1213824/1213824] -> "/root/ombra_iso/chroot//var/cache/apt/archives/partial/dpkg_1.23.11_amd64.deb" [1]
+2026-09-27 23:01:14 URL:http://deb.debian.org/debian/pool/main/e/e2fsprogs/e2fsprogs_1.47.4-1+b1_amd64.deb [603728/603728] -> "/root/ombra_iso/chroot//var/cache/apt/archives/partial/e2fsprogs_1.47.4-1+b1_amd64.deb" [1]
+2026-09-27 23:01:19 URL:http://deb.debian.org/debian/pool/main/u/util-linux/fdisk_2.42.3-1_amd64.deb [161788/161788] -> "/root/ombra_iso/chroot//var/cache/apt/archives/partial/fdisk_2.42.3-1_amd64.deb" [1]
+2026-09-27 23:01:25 URL:http://deb.debian.org/debian/pool/main/f/findutils/findutils_4.11.0-2_amd64.deb [781812/781812] -> "/root/ombra_iso/chroot//var/cache/apt/archives/partial/findutils_4.11.0-2_amd64.deb" [1]
+2026-09-27 23:01:31 URL:http://deb.debian.org/debian/pool/main/g/gcc-16/gcc-16-base_16.2.0-3_amd64.deb [38676/38676] -> "/root/ombra_iso/chroot//var/cache/apt/archives/partial/gcc-16-base_16.2.0-3_amd64.deb" [1]
+2026-09-27 23:01:36 URL:http://deb.debian.org/debian/pool/main/g/grep/grep_3.12-1_amd64.deb [443080/443080] -> "/root/ombra_iso/chroot//var/cache/apt/archives/partial/grep_3.12-1_amd64.deb" [1]
+2026-09-27 23:01:42 URL:http://deb.debian.org/debian/pool/main/g/gzip/gzip_1.14-1_amd64.deb [148504/148504] -> "/root/ombra_iso/chroot//var/cache/apt/archives/partial/gzip_1.14-1_amd64.deb" [1]
+2026-09-27 23:01:48 URL:http://deb.debian.org/debian/pool/main/h/hostname/hostname_3.25_amd64.deb [11024/11024] -> "/root/ombra_iso/chroot//var/cache/apt/archives/partial/hostname_3.25_amd64.deb" [1]

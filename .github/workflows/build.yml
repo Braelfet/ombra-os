@@ -1,0 +1,33 @@
+name: Build Ombra OS ISO
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y live-build debootstrap
+
+    - name: Setup build workspace
+      run: |
+        mkdir -p build && cd build
+        lb config --architecture amd64 --distribution testing --binary-images iso-hybrid
+        cp -r ../config .
+
+    - name: Build ISO
+      run: |
+        cd build
+        sudo lb build
+
+    - name: Upload ISO Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: OmbraOS-Live-ISO
+        path: build/*.iso
