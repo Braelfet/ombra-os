@@ -1,116 +1,96 @@
-name: Build Ombra OS ISO
+name: Build Ombra OS
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: [ "main" ]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install build tools
+      - name: Build Ombra OS ISO with KDE Plasma
         run: |
           sudo apt-get update
           sudo apt-get install -y debootstrap squashfs-tools xorriso grub-pc-bin grub-efi-amd64-bin mtools
 
-      - name: Build Debian Testing Rootfs & ISO
-        run: |
-          mkdir -p work
-          cd work
-          
-          # 1. Bootstrap pure Debian testing
-          sudo debootstrap --arch=amd64 testing chroot http://deb.debian.org/debian/
-          
-          # Function to clean mounts safely
-          cleanup() {
-            sudo umount -l chroot/dev 2>/dev/null || true
-            sudo umount -l chroot/run 2>/dev/null || true
-            sudo umount -l chroot/proc 2>/dev/null || true
-            sudo umount -l chroot/sys 2>/dev/null || true
-          }
-          trap cleanup EXIT
+          mkdir -p target
+          sudo debootstrap --arch=amd64 --variant=minbase testing target http://deb.debian.org/debian/
 
-          # 2. Configure sources inside chroot
-          sudo bash -c 'cat <<EOF > chroot/etc/apt/sources.list
-          deb http://deb.debian.org/debian/ testing main contrib non-free non-free-firmware
-          EOF'
-          
-          # 3. Mount pseudo-filesystems
-          sudo mount --bind /dev chroot/dev
-          sudo mount --bind /run chroot/run
-          sudo mount -t proc proc chroot/proc
-          sudo mount -t sysfs sys chroot/sys
-          
-          # 4. System configuration & Package installation
-          sudo chroot chroot bash -c "
-            export DEBIAN_FRONTEND=noninteractive
-            apt-get update
-            apt-get install -y --no-install-recommends \
+          sudo mount --bind /dev target/dev
+          sudo mount --bind /proc target/proc
+          sudo mount --bind /sys target/sys
+
+          cat << 'EOF' | sudo chroot target
+          export DEBIAN_FRONTEND=noninteractive
+
+          echo "deb http://deb.debian.org/debian testing main contrib non-free non-free-firmware" > /etc/apt/sources.list
+          echo "deb http://deb.debian.org/debian-security testing-security main contrib non-free non-free-firmware" >> /etc/apt/sources.list
+
+          apt-get update
+          apt-get install -y --no-install-recommends \
               linux-image-amd64 \
               live-boot \
               systemd-sysv \
+              kde-plasma-desktop \
+              plasma-discover \
+              sddm \
+              firefox-esr \
+              konsole \
+              dolphin \
+              firmware-linux \
+              firmware-realtek \
+              firmware-atheros \
               network-manager \
-              iproute2 \
-              procps \
-              nano \
-              htop
+              curl \
+              git \
+              htop \
+              fastfetch
 
-            # Set hostname
-            echo 'ombra-os' > /etc/hostname
-            echo '127.0.0.1 localhost' > /etc/hosts
-            echo '127.0.1.1 ombra-os' >> /etc/hosts
+          mkdir -p /etc/skel/.config
+          cat << 'EOC' > /etc/skel/.config/baloofilerc
+          [Basic Settings]
+          Indexing-Enabled=false
+          EOC
 
-            # Configure auto-login for root on tty1
-            mkdir -p /etc/systemd/system/getty@tty1.service.d
-            echo '[Service]' > /etc/systemd/system/getty@tty1.service.d/override.conf
-            echo 'ExecStart=' >> /etc/systemd/system/getty@tty1.service.d/override.conf
-            echo 'ExecStart=-/sbin/agetty --autologin root --noclear %I \$TERM' >> /etc/systemd/system/getty@tty1.service.d/override.conf
+          cat << 'EOC' > /etc/skel/.config/kdeglobals
+          [General]
+          ColorScheme=BreezeDark
+          SystemAppearance=Dark
+          EOC
 
-            # Set root password
-            echo 'root:root' | chpasswd
+          cat << 'EOC' > /etc/skel/.config/kwinrc
+          [Plugins]
+          shakecursorEnabled=true
+          [Compositing]
+          Enabled=true
+          AnimationSpeed=2
+          EOC
 
-            # Ensure .bashrc does not call fastfetch or missing tools
-            sed -i '/fastfetch/d' /root/.bashrc 2>/dev/null || true
-            sed -i '/neofetch/d' /root/.bashrc 2>/dev/null || true
-          "
-          
-          # Unmount before image creation
-          cleanup
-          
-          # 5. Create Live ISO layout
-          mkdir -p iso/live iso/boot/grub
-          sudo mksquashfs chroot iso/live/filesystem.squashfs -comp xz
-          
-          sudo cp chroot/vmlinuz iso/live/vmlinuz
-          sudo cp chroot/initrd.img iso/live/initrd.img
-          
-          # 6. Create GRUB config optimized for Limbo / QEMU
-          cat <<EOF | sudo tee iso/boot/grub/grub.cfg
-          set timeout=1
-          set default=0
+          mkdir -p /etc/sddm.conf.d
+          cat << 'EOC' > /etc/sddm.conf.d/autologin.conf
+          [Autologin]
+          User=root
+          Session=plasma
+          Relogin=false
+          [Theme]
+          Current=breeze
+          EOC
 
-          menuentry "Ombra OS (Live Console)" {
-              linux /live/vmlinuz boot=live nomodeset vga=normal console=tty0
-              initrd /live/initrd.img
-          }
+          ldconfig
+
+          apt-get clean
+          rm -rf /var/lib/apt/lists/*
           EOF
-          
-          # 7. Generate Bootable ISO
-          grub-mkrescue -o ../ombra-os.iso iso
 
-      - name: Fix permissions for Artifacts
-        if: always()
-        run: |
-          sudo chown -R $USER:$USER .
+          if [ -f "wallpaper.png" ]; then
+            sudo cp wallpaper.png target/usr/share/wallpapers/ombra_wallpaper.png
+          fi
 
-      - name: Upload ISO Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ombra-os-iso
-          path: "*.iso"
+          sudo umount target/dev
+          sudo umount target/proc
+          sudo umount target/sys
 
