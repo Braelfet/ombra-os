@@ -36,17 +36,17 @@ jobs:
             linux-image-amd64 live-boot \
             task-kde-desktop kde-plasma-desktop systemsettings sddm \
             konsole calamares dolphin breeze-icon-theme plasma-discover \
-            plasma-systemmonitor kcalc kate firefox-esr spectacle ark \
-            network-manager network-manager-kde wpasupplicant wireless-tools bluetooth bluez bluedevil \
+            plasma-systemmonitor kcalc kate firefox-esr kde-spectacle ark \
+            network-manager wpasupplicant wireless-tools bluetooth bluez bluedevil \
             pipewire pipewire-audio plasma-pa kscreen \
-            fastfetch htop cmatrix cbonsai tty-clock \
+            fastfetch htop cmatrix tty-clock \
             sudo systemd-sysv
 
           sudo chroot target useradd -m -s /bin/bash -g users -G sudo,video,audio,cdrom,dip,plugdev ombra
           sudo chroot target passwd -d ombra
 
-          sudo chroot target systemctl enable NetworkManager
-          sudo chroot target systemctl enable bluetooth
+          sudo chroot target systemctl enable NetworkManager || true
+          sudo chroot target systemctl enable bluetooth || true
 
           sudo mkdir -p target/etc/sddm.conf.d
           echo -e "[Autologin]\nUser=ombra\nSession=plasma" | sudo tee target/etc/sddm.conf.d/autologin.conf
@@ -82,7 +82,6 @@ jobs:
             sudo cp ombra_color.txt target/etc/fastfetch/config.jsonc
           fi
 
-          sudo mkdir -p target/home/ombra/.config/
           echo -e "[Containments][1][Wallpaper][org.kde.image][General]\nImage=file:///usr/share/wallpapers/ombra_wallpaper.png\n\n[Containments][2][Applets][3][Configuration][General]\nicon=ombra-logo" | sudo tee target/home/ombra/.config/plasma-org.kde.plasma.desktop-appletsrc
 
           sudo chroot target chown -R ombra:users /home/ombra/
