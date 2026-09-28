@@ -106,3 +106,28 @@ jobs:
           sudo umount -l target/proc || true
           sudo umount -l target/sys || true
 
+          # Створення ISO структури
+          mkdir -p iso/live iso/boot/grub
+          sudo mksquashfs target iso/live/filesystem.squashfs -comp xz
+
+          sudo cp target/boot/vmlinuz-* iso/live/vmlinuz
+          sudo cp target/boot/initrd.img-* iso/live/initrd.img
+
+          cat << 'EOC' > iso/boot/grub/grub.cfg
+          set default=0
+          set timeout=5
+
+          menuentry "Ombra OS (KDE Plasma Live)" {
+              linux /live/vmlinuz boot=live quiet splash
+              initrd /live/initrd.img
+          }
+          EOC
+
+          grub-mkrescue -o ombra-os.iso iso
+
+      - name: Upload ISO Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: OmbraOS-KDE-ISO
+          path: ombra-os.iso
+
