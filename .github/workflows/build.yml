@@ -42,19 +42,15 @@ jobs:
             fastfetch htop cmatrix cbonsai tty-clock \
             sudo systemd-sysv
 
-          # Створюємо користувача ombra
           sudo chroot target useradd -m -s /bin/bash -g users -G sudo,video,audio,cdrom,dip,plugdev ombra
           sudo chroot target passwd -d ombra
 
-          # Увімкнення служб NetworkManager та Bluetooth
           sudo chroot target systemctl enable NetworkManager
           sudo chroot target systemctl enable bluetooth
 
-          # Автологін SDDM
           sudo mkdir -p target/etc/sddm.conf.d
           echo -e "[Autologin]\nUser=ombra\nSession=plasma" | sudo tee target/etc/sddm.conf.d/autologin.conf
 
-          # Автозапуск fastfetch у терміналі
           echo "fastfetch" | sudo tee -a target/home/ombra/.bashrc
           echo "fastfetch" | sudo tee -a target/root/.bashrc
 
@@ -65,42 +61,30 @@ jobs:
 
       - name: Apply Custom Branding and Assets
         run: |
-          # Створюємо каталоги для брендингу, іконки меню та шпалер
           sudo mkdir -p target/usr/share/wallpapers/OmbraOS/contents/images/
           sudo mkdir -p target/usr/share/icons/hicolor/scalable/apps/
           sudo mkdir -p target/etc/fastfetch/
           sudo mkdir -p target/home/ombra/.config/
 
-          # Шпалери
           if [ -f wallpaper.png ]; then
             sudo cp wallpaper.png target/usr/share/wallpapers/OmbraOS/contents/images/1920x1080.png
             sudo cp wallpaper.png target/usr/share/wallpapers/ombra_wallpaper.png
             sudo cp wallpaper.png target/usr/share/wallpapers/Next/contents/images/1920x1080.png || true
           fi
 
-          # Іконка меню (logo.png)
           if [ -f logo.png ]; then
             sudo cp logo.png target/etc/fastfetch/logo.png
             sudo cp logo.png target/usr/share/icons/hicolor/scalable/apps/ombra-logo.png
             sudo cp logo.png target/usr/share/icons/hicolor/scalable/apps/start-here-kde.png || true
           fi
 
-          # Конфіг Fastfetch
           if [ -f ombra_color.txt ]; then
             sudo cp ombra_color.txt target/etc/fastfetch/config.jsonc
           fi
 
-          # Конфігурація Plasma (шпалери та іконка меню)
-          sudo mkdir -p target/home/ombra/.config/plasma-org.kde.plasma.desktop-appletsrc
-          sudo tee target/home/ombra/.config/plasma-org.kde.plasma.desktop-appletsrc << 'EOF' > /dev/null
-[Containments][1][Wallpaper][org.kde.image][General]
-Image=file:///usr/share/wallpapers/ombra_wallpaper.png
+          sudo mkdir -p target/home/ombra/.config/
+          echo -e "[Containments][1][Wallpaper][org.kde.image][General]\nImage=file:///usr/share/wallpapers/ombra_wallpaper.png\n\n[Containments][2][Applets][3][Configuration][General]\nicon=ombra-logo" | sudo tee target/home/ombra/.config/plasma-org.kde.plasma.desktop-appletsrc
 
-[Containments][2][Applets][3][Configuration][General]
-icon=ombra-logo
-EOF
-
-          # Фіксимо права доступу для домашньої директорії ombra
           sudo chroot target chown -R ombra:users /home/ombra/
 
       - name: Build Ombra OS ISO with KDE Plasma
