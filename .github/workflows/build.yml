@@ -35,12 +35,16 @@ jobs:
           sudo chroot target apt-get install -y --no-install-recommends \
             linux-image-amd64 live-boot \
             task-kde-desktop kde-plasma-desktop systemsettings sddm \
-            konsole calamares dolphin breeze-icon-theme plasma-discover \
+            konsole calamares calamares-settings-debian dolphin breeze-icon-theme plasma-discover \
+            kio-extras ca-certificates curl wget \
             plasma-systemmonitor kcalc kate firefox-esr kde-spectacle ark \
             network-manager plasma-nm plasma-widgets-addons wpasupplicant wireless-tools bluetooth bluez bluedevil \
             pipewire pipewire-audio plasma-pa kscreen \
             fastfetch htop cmatrix tty-clock \
-            sudo systemd-sysv
+            sudo systemd-sysv polkit-kde-agent-1
+
+          # Оновлення SSL-сертифікатів
+          sudo chroot target update-ca-certificates --fresh || true
 
           sudo chroot target useradd -m -s /bin/bash -g users -G sudo,video,audio,cdrom,dip,plugdev ombra
           sudo chroot target passwd -d ombra
@@ -51,16 +55,14 @@ jobs:
           sudo mkdir -p target/etc/sddm.conf.d
           echo -e "[Autologin]\nUser=ombra\nSession=plasma" | sudo tee target/etc/sddm.conf.d/autologin.conf
 
-          echo "fastfetch" | sudo tee -a target/home/ombra/.bashrc
-          echo "fastfetch" | sudo tee -a target/root/.bashrc
-
           sudo umount target/dev/pts || true
           sudo umount target/dev || true
           sudo umount target/proc || true
           sudo umount target/sys || true
 
-      - name: Apply Custom Branding and Assets
+      - name: Apply Custom Branding, Dark Theme and Assets
         run: |
+          # Створення системних каталогів
           sudo mkdir -p target/usr/share/wallpapers/OmbraOS/contents/images/
           sudo mkdir -p target/usr/share/wallpapers/Next/contents/images/
           sudo mkdir -p target/usr/share/icons/hicolor/scalable/apps/
@@ -68,35 +70,50 @@ jobs:
           sudo mkdir -p target/etc/fastfetch/
           sudo mkdir -p target/etc/skel/.config/
           sudo mkdir -p target/home/ombra/.config/
+          sudo mkdir -p target/var/lib/AccountsService/users/
+          sudo mkdir -p target/var/lib/AccountsService/icons/
 
-          # 1. Шпалери (підміняємо системні дефолтні шпалери KDE Breeze)
+          # 1. Шпалери (перезапис стандартних шпалер Debian/KDE)
           if [ -f wallpaper.png ]; then
             sudo cp wallpaper.png target/usr/share/wallpapers/OmbraOS/contents/images/1920x1080.png
             sudo cp wallpaper.png target/usr/share/wallpapers/ombra_wallpaper.png
             sudo cp wallpaper.png target/usr/share/wallpapers/Next/contents/images/1920x1080.png
             sudo cp wallpaper.png target/usr/share/wallpapers/Next/contents/images/2560x1600.png || true
+            # Видалення оверлей-стилів Debian
+            sudo rm -rf target/usr/share/desktop-base/active-theme/wallpaper/contents/images/* || true
+            sudo cp wallpaper.png target/usr/share/desktop-base/active-theme/wallpaper/contents/images/1920x1080.png || true
           fi
 
-          # 2. Іконка меню Пуск
+          # 2. Логотип та Іконка меню Пуск
           if [ -f logo.png ]; then
             sudo cp logo.png target/etc/fastfetch/logo.png
             sudo cp logo.png target/usr/share/icons/hicolor/scalable/apps/ombra-logo.png
             sudo cp logo.png target/usr/share/icons/breeze/places/64/start-here-kde.svg || true
             sudo cp logo.png target/usr/share/icons/hicolor/scalable/apps/start-here-kde.png || true
+            sudo cp logo.png target/usr/share/icons/breeze/apps/64/launch-main-menu.svg || true
+            # Аватарка користувача ombra
+            sudo cp logo.png target/home/ombra/.face
+            sudo cp logo.png target/etc/skel/.face
+            sudo cp logo.png target/var/lib/AccountsService/icons/ombra
           fi
 
-          # 3. Виправлення Fastfetch JSON
-          if [ -f ombra_color.txt ] && grep -q "{" ombra_color.txt; then
-            sudo cp ombra_color.txt target/etc/fastfetch/config.jsonc
-          else
-            echo '{"$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json", "logo": {"type": "file", "source": "/etc/fastfetch/logo.png"}, "modules": ["title", "separator", "os", "host", "kernel", "uptime", "packages", "shell", "wm", "terminal", "cpu", "gpu", "memory", "break", "colors"]}' | sudo tee target/etc/fastfetch/config.jsonc
-          fi
+          # Налаштування профілю користувача AccountsService (щоб прибрати лого Debian в SDDM/KDE)
+          echo -e "[User]\nLanguage=\nXSession=plasma\nIcon=/var/lib/AccountsService/icons/ombra\nSystemAccount=false" | sudo tee target/var/lib/AccountsService/users/ombra
 
-          # 4. Примусовий дефолтний профіль для Plasma (через /etc/skel та /home/ombra)
-          CONFIG_CONTENT="[Containments][1][Wallpaper][org.kde.image][General]\nImage=file:///usr/share/wallpapers/ombra_wallpaper.png\n\n[Containments][2][Applets][3][Configuration][General]\nicon=ombra-logo"
-          echo -e "$CONFIG_CONTENT" | sudo tee target/etc/skel/.config/plasma-org.kde.plasma.desktop-appletsrc
-          echo -e "$CONFIG_CONTENT" | sudo tee target/home/ombra/.config/plasma-org.kde.plasma.desktop-appletsrc
+          # 3. Виправлений конфіг Fastfetch (автостарт вимкнено з .bashrc)
+          echo '{"$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json", "logo": {"type": "auto", "source": "/etc/fastfetch/logo.png", "width": 28}, "modules": ["title", "separator", "os", "host", "kernel", "uptime", "packages", "shell", "wm", "terminal", "cpu", "gpu", "memory", "break", "colors"]}' | sudo tee target/etc/fastfetch/config.jsonc
 
+          # 4. Примусове застосування ТЕМНОЇ ТЕМИ (Breeze Dark)
+          KDEGLOBALS_CONTENT="[KDE]\nLookAndFeelPackage=org.kde.breezedark.desktop\n\n[General]\nColorScheme=BreezeDark\nName=Breeze Dark"
+          echo -e "$KDEGLOBALS_CONTENT" | sudo tee target/etc/skel/.config/kdeglobals
+          echo -e "$KDEGLOBALS_CONTENT" | sudo tee target/home/ombra/.config/kdeglobals
+
+          # 5. Примусові шпалери та логотип Пуск
+          PLASMA_CONFIG="[Containments][1][Wallpaper][org.kde.image][General]\nImage=file:///usr/share/wallpapers/ombra_wallpaper.png\n\n[Containments][2][Applets][3][Configuration][General]\nicon=ombra-logo"
+          echo -e "$PLASMA_CONFIG" | sudo tee target/etc/skel/.config/plasma-org.kde.plasma.desktop-appletsrc
+          echo -e "$PLASMA_CONFIG" | sudo tee target/home/ombra/.config/plasma-org.kde.plasma.desktop-appletsrc
+
+          # Фіксуємо права для користувача ombra
           sudo chroot target chown -R ombra:users /home/ombra/
 
       - name: Build Ombra OS ISO with KDE Plasma
