@@ -1,8 +1,8 @@
-name: Build Ombra OS
+name: Build Ombra OS ISO
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -12,116 +12,58 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Build Ombra OS ISO with KDE Plasma
+      - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y debootstrap squashfs-tools xorriso grub-pc-bin grub-efi-amd64-bin mtools
+          sudo apt-get install -y debootstrap squashfs-tools grub-pc-bin xorriso mtools
 
-          mkdir -p target
-          sudo debootstrap --arch=amd64 --variant=minbase testing target http://deb.debian.org/debian/
+      - name: Bootstrap Debian Trixie Base
+        run: |
+          sudo debootstrap --arch=amd64 testing target http://deb.debian.org/debian/
 
-          sudo chown root:root target
-          sudo chmod 755 target
+      - name: Install Applications, Desktop Environment, and Calamares
+        run: |
+          sudo chroot target apt-get update
+          sudo chroot target apt-get install -y --no-install-recommends \
+            task-kde-desktop kde-plasma-desktop sddm \
+            calamares dolphin breeze-icon-theme fastfetch htop firefox-esr \
+            network-manager sudo systemd-sysv
 
-          sudo mount --bind /dev target/dev
-          sudo mount --bind /dev/pts target/dev/pts
-          sudo mount -t proc proc target/proc
-          sudo mount -t sysfs sys target/sys
+      - name: Apply Custom Branding and Assets
+        run: |
+          sudo mkdir -p target/usr/share/wallpapers/
+          sudo mkdir -p target/etc/fastfetch/
 
-          cat << 'EOF' | sudo chroot target
-          export DEBIAN_FRONTEND=noninteractive
-          export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-
-          echo '#!/bin/sh' > /usr/sbin/policy-rc.d
-          echo 'exit 101' >> /usr/sbin/policy-rc.d
-          chmod +x /usr/sbin/policy-rc.d
-
-          echo "deb http://deb.debian.org/debian testing main contrib non-free non-free-firmware" > /etc/apt/sources.list
-          echo "deb http://deb.debian.org/debian-security testing-security main contrib non-free non-free-firmware" >> /etc/apt/sources.list
-
-          apt-get update
-          apt-get install -y --no-install-recommends \
-              linux-image-amd64 \
-              live-boot \
-              systemd-sysv \
-              kde-plasma-desktop \
-              plasma-discover \
-              sddm \
-              firefox-esr \
-              konsole \
-              dolphin \
-              firmware-linux \
-              firmware-realtek \
-              firmware-atheros \
-              network-manager \
-              curl \
-              git \
-              htop \
-              fastfetch
-
-          rm -f /usr/sbin/policy-rc.d
-
-          mkdir -p /etc/skel/.config
-          cat << 'EOC' > /etc/skel/.config/baloofilerc
-          [Basic Settings]
-          Indexing-Enabled=false
-          EOC
-
-          cat << 'EOC' > /etc/skel/.config/kdeglobals
-          [General]
-          ColorScheme=BreezeDark
-          SystemAppearance=Dark
-          EOC
-
-          cat << 'EOC' > /etc/skel/.config/kwinrc
-          [Plugins]
-          shakecursorEnabled=true
-          [Compositing]
-          Enabled=true
-          AnimationSpeed=2
-          EOC
-
-          mkdir -p /etc/sddm.conf.d
-          cat << 'EOC' > /etc/sddm.conf.d/autologin.conf
-          [Autologin]
-          User=root
-          Session=plasma
-          Relogin=false
-          [Theme]
-          Current=breeze
-          EOC
-
-          ldconfig
-
-          apt-get clean
-          rm -rf /var/lib/apt/lists/*
-          EOF
-
-          if [ -f "wallpaper.png" ]; then
+          if [ -f wallpaper.png ]; then
             sudo cp wallpaper.png target/usr/share/wallpapers/ombra_wallpaper.png
           fi
 
-          sudo umount -l target/dev/pts || true
-          sudo umount -l target/dev || true
-          sudo umount -l target/proc || true
-          sudo umount -l target/sys || true
+          if [ -f logo.png ]; then
+            sudo cp logo.png target/etc/fastfetch/logo.png
+          fi
+          
+          if [ -f ombra_color.txt ]; then
+            sudo cp ombra_color.txt target/etc/fastfetch/config.jsonc
+          fi
 
-          # Створення ISO структури
-          mkdir -p iso/live iso/boot/grub
-          sudo mksquashfs target iso/live/filesystem.squashfs -comp xz
-
-          sudo cp target/boot/vmlinuz-* iso/live/vmlinuz
-          sudo cp target/boot/initrd.img-* iso/live/initrd.img
-
-          cat << 'EOC' > iso/boot/grub/grub.cfg
-          set default=0
+      - name: Build Ombra OS ISO with KDE Plasma
+        run: |
+          mkdir -p iso/live
+          sudo mksquashfs target iso/live/filesystem.squashfs -comp xz -b 1M
+          
+          sudo mkdir -p iso/boot/grub
+          cat << 'EOF' > iso/boot/grub/grub.cfg
           set timeout=5
+          set default=0
 
-          menuentry "Ombra OS (KDE Plasma Live)" {
+          menuentry "Ombra OS (KDE Plasma, Live)" {
               linux /live/vmlinuz boot=live quiet splash
               initrd /live/initrd.img
           }
-          EOC
+          EOF
+
+          sudo cp target/boot/vmlinuz-* iso/live/vmlinuz || sudo cp target/boot/vmlinuz iso/live/vmlinuz
+          sudo cp target/boot/initrd.img-* iso/live/initrd.img || sudo cp target/boot/initrd.img iso/live/initrd.img
 
           grub-mkrescue -o ombra-os.iso iso
 
