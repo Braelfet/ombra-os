@@ -20,12 +20,21 @@ jobs:
           mkdir -p target
           sudo debootstrap --arch=amd64 --variant=minbase testing target http://deb.debian.org/debian/
 
+          sudo chown root:root target
+          sudo chmod 755 target
+
           sudo mount --bind /dev target/dev
-          sudo mount --bind /proc target/proc
-          sudo mount --bind /sys target/sys
+          sudo mount --bind /dev/pts target/dev/pts
+          sudo mount -t proc proc target/proc
+          sudo mount -t sysfs sys target/sys
 
           cat << 'EOF' | sudo chroot target
           export DEBIAN_FRONTEND=noninteractive
+          export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+          echo '#!/bin/sh' > /usr/sbin/policy-rc.d
+          echo 'exit 101' >> /usr/sbin/policy-rc.d
+          chmod +x /usr/sbin/policy-rc.d
 
           echo "deb http://deb.debian.org/debian testing main contrib non-free non-free-firmware" > /etc/apt/sources.list
           echo "deb http://deb.debian.org/debian-security testing-security main contrib non-free non-free-firmware" >> /etc/apt/sources.list
@@ -49,6 +58,8 @@ jobs:
               git \
               htop \
               fastfetch
+
+          rm -f /usr/sbin/policy-rc.d
 
           mkdir -p /etc/skel/.config
           cat << 'EOC' > /etc/skel/.config/baloofilerc
@@ -90,7 +101,8 @@ jobs:
             sudo cp wallpaper.png target/usr/share/wallpapers/ombra_wallpaper.png
           fi
 
-          sudo umount target/dev
-          sudo umount target/proc
-          sudo umount target/sys
+          sudo umount -l target/dev/pts || true
+          sudo umount -l target/dev || true
+          sudo umount -l target/proc || true
+          sudo umount -l target/sys || true
 
