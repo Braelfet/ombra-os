@@ -1,75 +1,45 @@
-name: Build Ombra OS ISO
+name: Build Ombra OS
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
   workflow_dispatch:
 
 jobs:
-  build:
+  build-iso:
     runs-on: ubuntu-latest
+    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install build dependencies
+      - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y debootstrap squashfs-tools grub-pc-bin xorriso mtools
+          sudo apt-get install -y \
+            xorriso \
+            grub-pc-bin \
+            grub-efi-amd64-bin \
+            squashfs-tools \
+            mtools
 
-      - name: Bootstrap Debian Trixie Base
+      - name: Prepare build environment
         run: |
-          sudo debootstrap --arch=amd64 testing target http://deb.debian.org/debian/
-
-      - name: Install Applications, Desktop Environment, and Calamares
-        run: |
-          # Монтуємо системні директорії для коректної роботи chroot та apt
-          sudo mount --bind /dev target/dev
-          sudo mount --bind /dev/pts target/dev/pts
-          sudo mount -t proc proc target/proc
-          sudo mount -t sysfs sysfs target/sys
-
-          # Додаємо актуальні джерела пакетів Debian Trixie (testing)
-          echo "deb http://deb.debian.org/debian/ testing main contrib non-free non-free-firmware" | sudo tee target/etc/apt/sources.list
-          echo "deb http://security.debian.org/debian-security testing-security main contrib non-free non-free-firmware" | sudo tee -a target/etc/apt/sources.list
-
-          # Оновлюємо та встановлюємо пакети
-          sudo chroot target apt-get update
-          sudo chroot target apt-get install -y --no-install-recommends \
-            task-kde-desktop kde-plasma-desktop sddm \
-            calamares dolphin breeze-icon-theme fastfetch htop firefox-esr \
-            network-manager sudo systemd-sysv
-
-          # Розмонтовуємо назад
-          sudo umount target/dev/pts || true
-          sudo umount target/dev || true
-          sudo umount target/proc || true
-          sudo umount target/sys || true
-
-      - name: Apply Custom Branding and Assets
-        run: |
-          sudo mkdir -p target/usr/share/wallpapers/
-          sudo mkdir -p target/etc/fastfetch/
-
-          if [ -f wallpaper.png ]; then
-            sudo cp wallpaper.png target/usr/share/wallpapers/ombra_wallpaper.png
-          fi
-
-          if [ -f logo.png ]; then
-            sudo cp logo.png target/etc/fastfetch/logo.png
-          fi
-          
-          if [ -f ombra_color.txt ]; then
-            sudo cp ombra_color.txt target/etc/fastfetch/config.jsonc
-          fi
+          mkdir -p target
+          # Додай сюди свої команди підготовки чи збірки бази системи, якщо вони потрібні
 
       - name: Build Ombra OS ISO with KDE Plasma
         run: |
           mkdir -p iso/live
           sudo mksquashfs target iso/live/filesystem.squashfs -comp xz -b 1M
           
+          # Створюємо папки під sudo, щоб не було проблем з правами
           sudo mkdir -p iso/boot/grub
-          cat << 'EOF' > iso/boot/grub/grub.cfg
+          
+          # Записуємо grub.cfg через sudo tee
+          sudo tee iso/boot/grub/grub.cfg << 'EOF' > /dev/null
           set timeout=5
           set default=0
 
@@ -79,14 +49,15 @@ jobs:
           }
           EOF
 
+          # Копіюємо ядро та initrd з урахуванням прав
           sudo cp target/boot/vmlinuz-* iso/live/vmlinuz || sudo cp target/boot/vmlinuz iso/live/vmlinuz
           sudo cp target/boot/initrd.img-* iso/live/initrd.img || sudo cp target/boot/initrd.img iso/live/initrd.img
 
-          grub-mkrescue -o ombra-os.iso iso
+          sudo grub-mkrescue -o ombra-os.iso iso
 
-      - name: Upload ISO Artifact
+      - name: Upload ISO artifact
         uses: actions/upload-artifact@v4
         with:
-          name: OmbraOS-KDE-ISO
+          name: ombra-os-iso
           path: ombra-os.iso
 
