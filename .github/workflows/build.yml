@@ -32,53 +32,47 @@ jobs:
       - name: Configure Ombra OS branding and Fastfetch
         run: |
           sudo chroot chroot bash -c '
-            cat << "EOF" > /etc/os-release
-NAME="Ombra OS"
-VERSION="1.0 (Trixie)"
-ID=ombra
-ID_LIKE=debian
-PRETTY_NAME="Ombra OS Trixie/Testing"
-VERSION_ID="1.0"
-HOME_URL="https://github.com/Braelfet/ombra-os"
-SUPPORT_URL="https://github.com/Braelfet/ombra-os/issues"
-BUG_REPORT_URL="https://github.com/Braelfet/ombra-os/issues"
-EOF
+          mkdir -p /usr/share/ombra /etc/skel/.config/fastfetch
+          
+          echo "NAME=\"Ombra OS\"" > /etc/os-release
+          echo "VERSION=\"1.0 (Trixie)\"" >> /etc/os-release
+          echo "ID=ombra" >> /etc/os-release
+          echo "ID_LIKE=debian" >> /etc/os-release
+          echo "PRETTY_NAME=\"Ombra OS Trixie/Testing\"" >> /etc/os-release
+          echo "VERSION_ID=\"1.0\"" >> /etc/os-release
+          echo "HOME_URL=\"https://github.com/Braelfet/ombra-os\"" >> /etc/os-release
 
-            mkdir -p /usr/share/ombra
-            if [ -f /usr/share/ombra_color.txt ]; then
-              cp /usr/share/ombra_color.txt /usr/share/ombra/ascii_logo.txt
-            fi
+          if [ -f /usr/share/ombra_color.txt ]; then
+            cp /usr/share/ombra_color.txt /usr/share/ombra/ascii_logo.txt
+          fi
 
-            mkdir -p /etc/skel/.config/fastfetch
-            cat << "EOF" > /etc/skel/.config/fastfetch/config.jsonc
-{
-  "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
-  "logo": {
-    "type": "raw",
-    "source": "/usr/share/ombra/ascii_logo.txt"
-  }
-}
-EOF
+          echo "{" > /etc/skel/.config/fastfetch/config.jsonc
+          echo "  \"\$schema\": \"https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json\"," >> /etc/skel/.config/fastfetch/config.jsonc
+          echo "  \"logo\": {" >> /etc/skel/.config/fastfetch/config.jsonc
+          echo "    \"type\": \"raw\"," >> /etc/skel/.config/fastfetch/config.jsonc
+          echo "    \"source\": \"/usr/share/ombra/ascii_logo.txt\"" >> /etc/skel/.config/fastfetch/config.jsonc
+          echo "  }" >> /etc/skel/.config/fastfetch/config.jsonc
+          echo "}" >> /etc/skel/.config/fastfetch/config.jsonc
           '
 
       - name: Install Desktop Environment (KDE Plasma 6) & Packages
         run: |
           sudo chroot chroot bash -c '
-            apt-get update
-            apt-get install -y linux-image-amd64 live-boot systemd-sysv
-            apt-get install -y plasma-desktop konsole dolphin kate fastfetch htop cmatrix tty-clock calamares
-            apt-get clean
+          apt-get update
+          apt-get install -y linux-image-amd64 live-boot systemd-sysv
+          apt-get install -y plasma-desktop konsole dolphin kate fastfetch htop cmatrix tty-clock calamares
+          apt-get clean
           '
 
       - name: Configure Live User (ombra)
         run: |
           sudo chroot chroot bash -c '
-            useradd -m -s /bin/bash ombra || true
-            echo "ombra:ombra" | chpasswd
-            usermod -aG sudo ombra || true
-            mkdir -p /home/ombra/.config/fastfetch
-            cp -r /etc/skel/.config/fastfetch/* /home/ombra/.config/fastfetch/ || true
-            chown -R ombra:ombra /home/ombra
+          useradd -m -s /bin/bash ombra || true
+          echo "ombra:ombra" | chpasswd
+          usermod -aG sudo ombra || true
+          mkdir -p /home/ombra/.config/fastfetch
+          cp -r /etc/skel/.config/fastfetch/* /home/ombra/.config/fastfetch/ || true
+          chown -R ombra:ombra /home/ombra
           '
 
       - name: Build SquashFS and ISO Image
