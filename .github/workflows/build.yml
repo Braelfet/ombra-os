@@ -67,11 +67,9 @@ jobs:
 
             # Configure auto-login for root on tty1
             mkdir -p /etc/systemd/system/getty@tty1.service.d
-            cat <<AUTOLOGIN > /etc/systemd/system/getty@tty1.service.d/override.conf
-[Service]
-ExecStart=
-ExecStart=-/sbin/agetty --autologin root --noclear %I \\\$TERM
-AUTOLOGIN
+            echo '[Service]' > /etc/systemd/system/getty@tty1.service.d/override.conf
+            echo 'ExecStart=' >> /etc/systemd/system/getty@tty1.service.d/override.conf
+            echo 'ExecStart=-/sbin/agetty --autologin root --noclear %I \$TERM' >> /etc/systemd/system/getty@tty1.service.d/override.conf
 
             # Set root password
             echo 'root:root' | chpasswd
