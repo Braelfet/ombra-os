@@ -23,17 +23,14 @@ jobs:
 
       - name: Install Desktop, Calamares, Apps and Terminal Utilities
         run: |
-          # Монтуємо системні директорії для chroot
           sudo mount --bind /dev target/dev
           sudo mount --bind /dev/pts target/dev/pts
           sudo mount -t proc proc target/proc
           sudo mount -t sysfs sysfs target/sys
 
-          # Джерела пакетів Debian Trixie
           echo "deb http://deb.debian.org/debian/ testing main contrib non-free non-free-firmware" | sudo tee target/etc/apt/sources.list
           echo "deb http://security.debian.org/debian-security testing-security main contrib non-free non-free-firmware" | sudo tee -a target/etc/apt/sources.list
 
-          # Встановлюємо KDE Plasma, Calamares, софт (Task Manager, Calculator, Firefox) та термінальні утиліти (cmatrix, fastfetch)
           sudo chroot target apt-get update
           sudo chroot target apt-get install -y --no-install-recommends \
             linux-image-amd64 live-boot \
@@ -43,24 +40,16 @@ jobs:
             fastfetch htop cmatrix cbonsai tty-clock \
             network-manager sudo systemd-sysv
 
-          # Створюємо користувача 'ombra' без пароля з правами sudo для Live-режиму
           sudo chroot target useradd -m -s /bin/bash -g users -G sudo,video,audio,cdrom,dip,plugdev ombra
           sudo chroot target passwd -d ombra
 
-          # Авто-вхід для SDDM без запиту пароля
           sudo mkdir -p target/etc/sddm.conf.d
-          sudo tee target/etc/sddm.conf.d/autologin.conf << 'EOF' > /dev/null
-[Autologin]
-User=ombra
-Session=plasma
-EOF
+          echo -e "[Autologin]\nUser=ombra\nSession=plasma" | sudo tee target/etc/sddm.conf.d/autologin.conf
 
-          # Налаштовуємо автозапуск fastfetch при відкритті термінала для користувача ombra та root
           echo "fastfetch" | sudo tee -a target/home/ombra/.bashrc
           echo "fastfetch" | sudo tee -a target/root/.bashrc
           sudo chroot target chown ombra:users /home/ombra/.bashrc
 
-          # Розмонтовуємо назад
           sudo umount target/dev/pts || true
           sudo umount target/dev || true
           sudo umount target/proc || true
@@ -68,17 +57,14 @@ EOF
 
       - name: Apply Custom Branding and Assets
         run: |
-          # Створюємо потрібні каталоги під брендинг
           sudo mkdir -p target/usr/share/wallpapers/OmbraOS/contents/images/
           sudo mkdir -p target/etc/fastfetch/
 
-          # Скопіювати кастомні шпалери
           if [ -f wallpaper.png ]; then
             sudo cp wallpaper.png target/usr/share/wallpapers/OmbraOS/contents/images/1920x1080.png
             sudo cp wallpaper.png target/usr/share/wallpapers/ombra_wallpaper.png
           fi
 
-          # Налаштувати кастомний логотип та конфіг Fastfetch
           if [ -f logo.png ]; then
             sudo cp logo.png target/etc/fastfetch/logo.png
           fi
@@ -94,15 +80,7 @@ EOF
           
           sudo mkdir -p iso/boot/grub
           
-          sudo tee iso/boot/grub/grub.cfg << 'EOF' > /dev/null
-          set timeout=5
-          set default=0
-
-          menuentry "Ombra OS (KDE Plasma, Live)" {
-              linux /live/vmlinuz boot=live quiet splash
-              initrd /live/initrd.img
-          }
-          EOF
+          echo -e "set timeout=5\nset default=0\n\nmenuentry \"Ombra OS (KDE Plasma, Live)\" {\n    linux /live/vmlinuz boot=live quiet splash\n    initrd /live/initrd.img\n}" | sudo tee iso/boot/grub/grub.cfg
 
           sudo cp target/boot/vmlinuz-* iso/live/vmlinuz || sudo cp target/boot/vmlinuz iso/live/vmlinuz
           sudo cp target/boot/initrd.img-* iso/live/initrd.img || sudo cp target/boot/initrd.img iso/live/initrd.img
