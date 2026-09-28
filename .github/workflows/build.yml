@@ -24,10 +24,12 @@ jobs:
 
       - name: Copy repository assets to chroot
         run: |
-          sudo mkdir -p chroot/usr/share/wallpapers chroot/usr/share/pixmaps
+          sudo mkdir -p chroot/usr/share/wallpapers/Ombra chroot/usr/share/pixmaps chroot/etc/skel
           sudo cp ombra_color.txt chroot/usr/share/ombra_color.txt || true
+          sudo cp wallpaper.png chroot/usr/share/wallpapers/Ombra/contents/images/1920x1080.png || true
           sudo cp wallpaper.png chroot/usr/share/wallpapers/ombra_wallpaper.png || true
           sudo cp logo.png chroot/usr/share/pixmaps/ombra_logo.png || true
+          sudo cp avatar.png chroot/etc/skel/.face || true
 
       - name: Configure Ombra OS branding and Fastfetch
         run: |
@@ -60,8 +62,16 @@ jobs:
           sudo chroot chroot bash -c '
           apt-get update
           apt-get install -y linux-image-amd64 live-boot systemd-sysv
-          apt-get install -y plasma-desktop konsole dolphin kate fastfetch htop cmatrix tty-clock calamares
+          apt-get install -y kde-standard plasma-desktop konsole dolphin kate fastfetch htop cmatrix tty-clock calamares breeze-icon-theme plasma-nm plasma-pa sddm
           apt-get clean
+          '
+
+      - name: Apply Breeze Dark theme and UI settings
+        run: |
+          sudo chroot chroot bash -c '
+          mkdir -p /etc/skel/.config
+          echo "[Global]" > /etc/skel/.config/kdeglobals
+          echo "LookAndFeelPackage=org.kde.breezedark.desktop" >> /etc/skel/.config/kdeglobals
           '
 
       - name: Configure Live User (ombra)
@@ -70,8 +80,11 @@ jobs:
           useradd -m -s /bin/bash ombra || true
           echo "ombra:ombra" | chpasswd
           usermod -aG sudo ombra || true
-          mkdir -p /home/ombra/.config/fastfetch
-          cp -r /etc/skel/.config/fastfetch/* /home/ombra/.config/fastfetch/ || true
+          mkdir -p /home/ombra/.config
+          cp -r /etc/skel/.config/* /home/ombra/.config/ || true
+          if [ -f /etc/skel/.face ]; then
+            cp /etc/skel/.face /home/ombra/.face || true
+          fi
           chown -R ombra:ombra /home/ombra
           '
 
