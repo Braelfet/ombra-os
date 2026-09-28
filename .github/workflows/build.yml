@@ -33,9 +33,10 @@ jobs:
           echo "deb http://deb.debian.org/debian/ testing main contrib non-free non-free-firmware" | sudo tee target/etc/apt/sources.list
           echo "deb http://security.debian.org/debian-security testing-security main contrib non-free non-free-firmware" | sudo tee -a target/etc/apt/sources.list
 
-          # Оновлюємо та встановлюємо пакети
+          # Оновлюємо та встановлюємо пакети (включаючи ядро linux-image-amd64 та live-boot)
           sudo chroot target apt-get update
           sudo chroot target apt-get install -y --no-install-recommends \
+            linux-image-amd64 live-boot \
             task-kde-desktop kde-plasma-desktop sddm \
             calamares dolphin breeze-icon-theme fastfetch htop firefox-esr \
             network-manager sudo systemd-sysv
