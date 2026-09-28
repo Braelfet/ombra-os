@@ -21,25 +21,44 @@ jobs:
         run: |
           sudo debootstrap --arch=amd64 testing target http://deb.debian.org/debian/
 
-      - name: Install Applications, Desktop Environment, and Calamares
+      - name: Install Desktop, Calamares, Apps and Terminal Utilities
         run: |
-          # Монтуємо системні директорії для коректної роботи chroot та apt
+          # Монтуємо системні директорії для chroot
           sudo mount --bind /dev target/dev
           sudo mount --bind /dev/pts target/dev/pts
           sudo mount -t proc proc target/proc
           sudo mount -t sysfs sysfs target/sys
 
-          # Додаємо актуальні джерела пакетів Debian Trixie (testing)
+          # Джерела пакетів Debian Trixie
           echo "deb http://deb.debian.org/debian/ testing main contrib non-free non-free-firmware" | sudo tee target/etc/apt/sources.list
           echo "deb http://security.debian.org/debian-security testing-security main contrib non-free non-free-firmware" | sudo tee -a target/etc/apt/sources.list
 
-          # Оновлюємо та встановлюємо пакети (включаючи ядро linux-image-amd64 та live-boot)
+          # Встановлюємо KDE Plasma, Calamares, софт (Task Manager, Calculator, Firefox) та термінальні утиліти (cmatrix, fastfetch)
           sudo chroot target apt-get update
           sudo chroot target apt-get install -y --no-install-recommends \
             linux-image-amd64 live-boot \
-            task-kde-desktop kde-plasma-desktop sddm \
-            calamares dolphin breeze-icon-theme fastfetch htop firefox-esr \
+            task-kde-desktop kde-plasma-desktop systemsettings sddm \
+            calamares dolphin breeze-icon-theme plasma-discover \
+            plasma-systemmonitor kcalc kate firefox-esr \
+            fastfetch htop cmatrix cbonsai tty-clock \
             network-manager sudo systemd-sysv
+
+          # Створюємо користувача 'ombra' без пароля з правами sudo для Live-режиму
+          sudo chroot target useradd -m -s /bin/bash -g users -G sudo,video,audio,cdrom,dip,plugdev ombra
+          sudo chroot target passwd -d ombra
+
+          # Авто-вхід для SDDM без запиту пароля
+          sudo mkdir -p target/etc/sddm.conf.d
+          sudo tee target/etc/sddm.conf.d/autologin.conf << 'EOF' > /dev/null
+[Autologin]
+User=ombra
+Session=plasma
+EOF
+
+          # Налаштовуємо автозапуск fastfetch при відкритті термінала для користувача ombra та root
+          echo "fastfetch" | sudo tee -a target/home/ombra/.bashrc
+          echo "fastfetch" | sudo tee -a target/root/.bashrc
+          sudo chroot target chown ombra:users /home/ombra/.bashrc
 
           # Розмонтовуємо назад
           sudo umount target/dev/pts || true
@@ -49,13 +68,17 @@ jobs:
 
       - name: Apply Custom Branding and Assets
         run: |
-          sudo mkdir -p target/usr/share/wallpapers/
+          # Створюємо потрібні каталоги під брендинг
+          sudo mkdir -p target/usr/share/wallpapers/OmbraOS/contents/images/
           sudo mkdir -p target/etc/fastfetch/
 
+          # Скопіювати кастомні шпалери
           if [ -f wallpaper.png ]; then
+            sudo cp wallpaper.png target/usr/share/wallpapers/OmbraOS/contents/images/1920x1080.png
             sudo cp wallpaper.png target/usr/share/wallpapers/ombra_wallpaper.png
           fi
 
+          # Налаштувати кастомний логотип та конфіг Fastfetch
           if [ -f logo.png ]; then
             sudo cp logo.png target/etc/fastfetch/logo.png
           fi
@@ -69,10 +92,8 @@ jobs:
           mkdir -p iso/live
           sudo mksquashfs target iso/live/filesystem.squashfs -comp xz -b 1M
           
-          # Створюємо папки під sudo, щоб не було проблем з правами
           sudo mkdir -p iso/boot/grub
           
-          # Записуємо grub.cfg через sudo tee
           sudo tee iso/boot/grub/grub.cfg << 'EOF' > /dev/null
           set timeout=5
           set default=0
@@ -83,7 +104,6 @@ jobs:
           }
           EOF
 
-          # Копіюємо ядро та initrd з урахуванням прав
           sudo cp target/boot/vmlinuz-* iso/live/vmlinuz || sudo cp target/boot/vmlinuz iso/live/vmlinuz
           sudo cp target/boot/initrd.img-* iso/live/initrd.img || sudo cp target/boot/initrd.img iso/live/initrd.img
 
