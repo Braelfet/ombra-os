@@ -88,10 +88,35 @@ jobs:
           chown -R ombra:ombra /home/ombra
           '
 
-      - name: Build SquashFS and ISO Image
+      - name: Prepare ISO Structure and GRUB Boot Config
         run: |
-          mkdir -p iso/live
+          mkdir -p iso/live iso/boot/grub
+          
+          # Копіюємо ядро та initrd з chroot в структуру ISO
+          sudo cp chroot/boot/vmlinuz-* iso/live/vmlinuz
+          sudo cp chroot/boot/initrd.img-* iso/live/initrd.img
+          
+          # Упаковка системи в SquashFS
           sudo mksquashfs chroot iso/live/filesystem.squashfs -comp xz
+
+          # Створення конфігураційного файлу GRUB
+          cat << 'EOF' > iso/boot/grub/grub.cfg
+          set default=0
+          set timeout=5
+
+          menuentry "Ombra OS 1.0 Live (KDE Plasma 6)" {
+              linux /live/vmlinuz boot=live quiet splash
+              initrd /live/initrd.img
+          }
+
+          menuentry "Ombra OS 1.0 Live (Failsafe)" {
+              linux /live/vmlinuz boot=live nomodeset
+              initrd /live/initrd.img
+          }
+          EOF
+
+      - name: Build ISO Image
+        run: |
           grub-mkrescue -o ombra-os-trixie-kde.iso iso/
 
       - name: Upload ISO Artifact
