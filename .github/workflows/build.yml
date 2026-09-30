@@ -48,21 +48,44 @@ jobs:
             cp /usr/share/ombra_color.txt /usr/share/ombra/ascii_logo.txt
           fi
 
-          echo "{" > /etc/skel/.config/fastfetch/config.jsonc
-          echo "  \"\$schema\": \"https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json\"," >> /etc/skel/.config/fastfetch/config.jsonc
-          echo "  \"logo\": {" >> /etc/skel/.config/fastfetch/config.jsonc
-          echo "    \"type\": \"raw\"," >> /etc/skel/.config/fastfetch/config.jsonc
-          echo "    \"source\": \"/usr/share/ombra/ascii_logo.txt\"" >> /etc/skel/.config/fastfetch/config.jsonc
-          echo "  }" >> /etc/skel/.config/fastfetch/config.jsonc
-          echo "}" >> /etc/skel/.config/fastfetch/config.jsonc
+          cat << "EOFF" > /etc/skel/.config/fastfetch/config.jsonc
+          {
+            "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
+            "logo": {
+              "type": "raw",
+              "source": "/usr/share/ombra/ascii_logo.txt"
+            },
+            "modules": [
+              "title",
+              "separator",
+              "os",
+              "host",
+              "kernel",
+              "uptime",
+              "packages",
+              "shell",
+              "display",
+              "de",
+              "wm",
+              "terminal",
+              "cpu",
+              "gpu",
+              "memory",
+              "break",
+              "colors"
+            ]
+          }
+          EOFF
           '
 
-      - name: Install Desktop Environment (KDE Plasma 6) & Packages
+      - name: Install Pure KDE Plasma 6 & Remove Debian Themes
         run: |
           sudo chroot chroot bash -c '
           apt-get update
           apt-get install -y linux-image-amd64 live-boot systemd-sysv
-          apt-get install -y kde-standard plasma-desktop konsole dolphin kate fastfetch htop cmatrix tty-clock calamares breeze-icon-theme plasma-nm plasma-pa sddm
+          apt-get install -y plasma-workspace plasma-desktop konsole dolphin kate fastfetch htop cmatrix tty-clock calamares breeze-icon-theme plasma-nm plasma-pa sddm
+          
+          apt-get purge -y desktop-base plymouth-theme-debian-spinner || true
           apt-get clean
           '
 
@@ -92,24 +115,21 @@ jobs:
         run: |
           mkdir -p iso/live iso/boot/grub
           
-          # Копіюємо ядро та initrd з chroot в структуру ISO
           sudo cp chroot/boot/vmlinuz-* iso/live/vmlinuz
           sudo cp chroot/boot/initrd.img-* iso/live/initrd.img
           
-          # Упаковка системи в SquashFS
           sudo mksquashfs chroot iso/live/filesystem.squashfs -comp xz
 
-          # Створення конфігураційного файлу GRUB
           cat << 'EOF' > iso/boot/grub/grub.cfg
           set default=0
-          set timeout=5
+          set timeout=3
 
-          menuentry "Ombra OS 1.0 Live (KDE Plasma 6)" {
-              linux /live/vmlinuz boot=live quiet splash
+          menuentry "Ombra OS 1.0 (KDE Plasma 6)" {
+              linux /live/vmlinuz boot=live quiet
               initrd /live/initrd.img
           }
 
-          menuentry "Ombra OS 1.0 Live (Failsafe)" {
+          menuentry "Ombra OS 1.0 (Failsafe Mode)" {
               linux /live/vmlinuz boot=live nomodeset
               initrd /live/initrd.img
           }
