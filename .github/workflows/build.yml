@@ -2,7 +2,7 @@ name: Build Ombra OS ISO
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "master" ]
   workflow_dispatch:
 
 jobs:
@@ -10,144 +10,205 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Install build dependencies
+      - name: Install Live-Build & Build Tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y debootstrap squashfs-tools xorriso grub-pc-bin grub-efi-amd64-bin mtools
+          sudo apt-get install -y \
+            live-build \
+            debootstrap \
+            curl \
+            git \
+            squashfs-tools \
+            xorriso \
+            isolinux \
+            syslinux-utils
 
-      - name: Create chroot environment
+      - name: Setup Live-Build Config (Autologin ombra user)
         run: |
-          sudo debootstrap --arch=amd64 trixie chroot http://deb.debian.org/debian/
+          lb config \
+            --architectures amd64 \
+            --distribution bookworm \
+            --archive-areas "main contrib non-free non-free-firmware" \
+            --binary-images iso-hybrid \
+            --bootloader grub-efi \
+            --bootappend-live "boot=live components quiet splash username=ombra default_password=false user-default-groups=sudo,audio,cdrom,video,plugdev,netdev,powerdev"
 
-      - name: Copy repository assets to chroot
+          # Створення необхідних директорій
+          mkdir -p config/includes.chroot/etc/skel/.config/fastfetch
+          mkdir -p config/includes.chroot/usr/share/backgrounds/ombra
+          mkdir -p config/includes.chroot/usr/share/pixmaps
+          mkdir -p config/includes.chroot/var/lib/AccountsService/icons
+
+      - name: Set System Packages (KDE Plasma & Custom Apps)
         run: |
-          sudo mkdir -p chroot/usr/share/wallpapers/Ombra chroot/usr/share/pixmaps chroot/etc/skel
-          sudo cp ombra_color.txt chroot/usr/share/ombra_color.txt || true
-          sudo cp wallpaper.png chroot/usr/share/wallpapers/Ombra/contents/images/1920x1080.png || true
-          sudo cp wallpaper.png chroot/usr/share/wallpapers/ombra_wallpaper.png || true
-          sudo cp logo.png chroot/usr/share/pixmaps/ombra_logo.png || true
-          sudo cp avatar.png chroot/etc/skel/.face || true
+          mkdir -p config/package-lists
+          cat << 'EOF' > config/package-lists/desktop.list.chroot
+          task-kde-desktop
+          plasma-desktop
+          dolphin
+          konsole
+          kate
+          spectacle
+          fastfetch
+          kdeconnect
+          partitionmanager
+          ark
+          gwenview
+          curl
+          git
+          sudo
+          nano
+          EOF
 
-      - name: Configure Ombra OS branding and Fastfetch
+      - name: Apply Ombra OS Branding (Remove Debian Traces)
         run: |
-          sudo chroot chroot bash -c '
-          mkdir -p /usr/share/ombra /etc/skel/.config/fastfetch
-          
-          echo "NAME=\"Ombra OS\"" > /etc/os-release
-          echo "VERSION=\"1.0 (Trixie)\"" >> /etc/os-release
-          echo "ID=ombra" >> /etc/os-release
-          echo "ID_LIKE=debian" >> /etc/os-release
-          echo "PRETTY_NAME=\"Ombra OS Trixie/Testing\"" >> /etc/os-release
-          echo "VERSION_ID=\"1.0\"" >> /etc/os-release
-          echo "HOME_URL=\"https://github.com/Braelfet/ombra-os\"" >> /etc/os-release
+          # /etc/os-release
+          cat << 'EOF' > config/includes.chroot/etc/os-release
+          PRETTY_NAME="Ombra OS 1.0"
+          NAME="Ombra OS"
+          VERSION_ID="1.0"
+          VERSION="1.0 (ombra)"
+          VERSION_CODENAME="ombra"
+          ID="ombra"
+          ID_LIKE="debian"
+          HOME_URL="https://github.com/Braelfet/ombra-os"
+          SUPPORT_URL="https://github.com/Braelfet/ombra-os"
+          BUG_REPORT_URL="https://github.com/Braelfet/ombra-os"
+          EOF
 
-          if [ -f /usr/share/ombra_color.txt ]; then
-            cp /usr/share/ombra_color.txt /usr/share/ombra/ascii_logo.txt
+          # /etc/issue & issue.net
+          echo "Ombra OS 1.0 \n \l" > config/includes.chroot/etc/issue
+          echo "Ombra OS 1.0" > config/includes.chroot/etc/issue.net
+
+      - name: Copy Assets (Wallpaper, Logo, Avatar & ASCII)
+        run: |
+          if [ -f "wallpaper.jpg" ]; then
+            cp wallpaper.jpg config/includes.chroot/usr/share/backgrounds/ombra/wallpaper.jpg
           fi
 
-          cat << "EOFF" > /etc/skel/.config/fastfetch/config.jsonc
+          if [ -f "logo.png" ]; then
+            cp logo.png config/includes.chroot/usr/share/pixmaps/logo.png
+          fi
+
+          if [ -f "logob.png" ]; then
+            cp logob.png config/includes.chroot/var/lib/AccountsService/icons/ombra-avatar.png
+            cp logob.png config/includes.chroot/etc/skel/.face
+          fi
+
+          if [ -f "ombra_raw.txt" ]; then
+            cp ombra_raw.txt config/includes.chroot/usr/share/pixmaps/ombra_raw.txt
+          fi
+
+      - name: Configure Fastfetch (Color ASCII & Auto-launch)
+        run: |
+          cat << 'EOF' > config/includes.chroot/etc/skel/.config/fastfetch/config.jsonc
           {
-            "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
-            "logo": {
-              "type": "raw",
-              "source": "/usr/share/ombra/ascii_logo.txt"
-            },
-            "modules": [
-              "title",
-              "separator",
-              "os",
-              "host",
-              "kernel",
-              "uptime",
-              "packages",
-              "shell",
-              "display",
-              "de",
-              "wm",
-              "terminal",
-              "cpu",
-              "gpu",
-              "memory",
-              "break",
-              "colors"
-            ]
-          }
-          EOFF
-          '
-
-      - name: Install Pure KDE Plasma 6 & Remove Debian Themes
-        run: |
-          sudo chroot chroot bash -c '
-          apt-get update
-          apt-get install -y linux-image-amd64 live-boot systemd-sysv
-          apt-get install -y plasma-workspace plasma-desktop konsole dolphin kate fastfetch htop cmatrix tty-clock calamares breeze-icon-theme plasma-nm plasma-pa sddm
-          
-          apt-get purge -y desktop-base plymouth-theme-debian-spinner || true
-          apt-get clean
-          '
-
-      - name: Apply Breeze Dark theme and UI settings
-        run: |
-          sudo chroot chroot bash -c '
-          mkdir -p /etc/skel/.config
-          echo "[Global]" > /etc/skel/.config/kdeglobals
-          echo "LookAndFeelPackage=org.kde.breezedark.desktop" >> /etc/skel/.config/kdeglobals
-          '
-
-      - name: Configure Live User (ombra) and SDDM Autologin
-        run: |
-          sudo chroot chroot bash -c '
-          useradd -m -s /bin/bash ombra || true
-          echo "ombra:ombra" | chpasswd
-          usermod -aG sudo ombra || true
-          mkdir -p /home/ombra/.config
-          cp -r /etc/skel/.config/* /home/ombra/.config/ || true
-          if [ -f /etc/skel/.face ]; then
-            cp /etc/skel/.face /home/ombra/.face || true
-          fi
-          chown -R ombra:ombra /home/ombra
-
-          # Автологін без запиту пароля при завантаженні Live ISO
-          mkdir -p /etc/sddm.conf.d
-          echo "[Autologin]" > /etc/sddm.conf.d/autologin.conf
-          echo "User=ombra" >> /etc/sddm.conf.d/autologin.conf
-          echo "Session=plasma" >> /etc/sddm.conf.d/autologin.conf
-          '
-
-      - name: Prepare ISO Structure and GRUB Boot Config
-        run: |
-          mkdir -p iso/live iso/boot/grub
-          
-          sudo cp chroot/boot/vmlinuz-* iso/live/vmlinuz
-          sudo cp chroot/boot/initrd.img-* iso/live/initrd.img
-          
-          sudo mksquashfs chroot iso/live/filesystem.squashfs -comp xz
-
-          cat << 'EOF' > iso/boot/grub/grub.cfg
-          set default=0
-          set timeout=3
-
-          menuentry "Ombra OS 1.0 (KDE Plasma 6)" {
-              linux /live/vmlinuz boot=live quiet
-              initrd /live/initrd.img
-          }
-
-          menuentry "Ombra OS 1.0 (Failsafe Mode)" {
-              linux /live/vmlinuz boot=live nomodeset
-              initrd /live/initrd.img
+              "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
+              "logo": {
+                  "type": "file",
+                  "source": "/usr/share/pixmaps/ombra_raw.txt",
+                  "color": {
+                      "1": "magenta",
+                      "2": "cyan"
+                  },
+                  "padding": {
+                      "top": 1,
+                      "left": 2,
+                      "right": 4
+                  }
+              },
+              "display": {
+                  "color": {
+                      "keys": "magenta",
+                      "title": "cyan"
+                  },
+                  "separator": " ➜  "
+              },
+              "modules": [
+                  "title",
+                  "separator",
+                  {
+                      "type": "os",
+                      "key": "OS",
+                      "keyColor": "magenta"
+                  },
+                  {
+                      "type": "kernel",
+                      "key": "Kernel",
+                      "keyColor": "magenta"
+                  },
+                  {
+                      "type": "uptime",
+                      "key": "Uptime",
+                      "keyColor": "magenta"
+                  },
+                  {
+                      "type": "packages",
+                      "key": "Packages",
+                      "keyColor": "magenta"
+                  },
+                  {
+                      "type": "shell",
+                      "key": "Shell",
+                      "keyColor": "magenta"
+                  },
+                  {
+                      "type": "wm",
+                      "key": "DE/WM",
+                      "keyColor": "magenta"
+                  },
+                  {
+                      "type": "terminal",
+                      "key": "Terminal",
+                      "keyColor": "magenta"
+                  },
+                  {
+                      "type": "memory",
+                      "key": "Memory",
+                      "keyColor": "magenta"
+                  },
+                  "break",
+                  "colors"
+              ]
           }
           EOF
 
-      - name: Build ISO Image
+          # Автозапуск fastfetch при відкритті терміналу без sudo
+          echo "fastfetch" >> config/includes.chroot/etc/skel/.bashrc
+
+      - name: Configure KDE Plasma (Breeze Dark & Wallpaper)
         run: |
-          grub-mkrescue -o ombra-os-trixie-kde.iso iso/
+          cat << 'EOF' > config/includes.chroot/etc/skel/.config/kdeglobals
+          [General]
+          ColorScheme=BreezeDark
+
+          [KDE]
+          LookAndFeelPackage=org.kde.breezedark.desktop
+          EOF
+
+          cat << 'EOF' > config/includes.chroot/etc/skel/.config/plasma-org.kde.plasma.desktop-appletsrc
+          [Containments][1]
+          plugin=org.kde.panel
+          wallpaperplugin=org.kde.image
+
+          [Containments][2]
+          plugin=org.kde.desktopcontainment
+          wallpaperplugin=org.kde.image
+
+          [Containments][2][Wallpaper][org.kde.image][General]
+          Image=file:///usr/share/backgrounds/ombra/wallpaper.jpg
+          EOF
+
+      - name: Build Live ISO
+        run: |
+          sudo lb build
 
       - name: Upload ISO Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Ombra-OS-ISO
-          path: ombra-os-trixie-kde.iso
+          name: Ombra-OS-1.0-KDE-amd64
+          path: "*.iso"
 
