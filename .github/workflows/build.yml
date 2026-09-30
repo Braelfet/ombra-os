@@ -97,7 +97,7 @@ jobs:
           echo "LookAndFeelPackage=org.kde.breezedark.desktop" >> /etc/skel/.config/kdeglobals
           '
 
-      - name: Configure Live User (ombra)
+      - name: Configure Live User (ombra) and SDDM Autologin
         run: |
           sudo chroot chroot bash -c '
           useradd -m -s /bin/bash ombra || true
@@ -109,6 +109,12 @@ jobs:
             cp /etc/skel/.face /home/ombra/.face || true
           fi
           chown -R ombra:ombra /home/ombra
+
+          # Автологін без запиту пароля при завантаженні Live ISO
+          mkdir -p /etc/sddm.conf.d
+          echo "[Autologin]" > /etc/sddm.conf.d/autologin.conf
+          echo "User=ombra" >> /etc/sddm.conf.d/autologin.conf
+          echo "Session=plasma" >> /etc/sddm.conf.d/autologin.conf
           '
 
       - name: Prepare ISO Structure and GRUB Boot Config
