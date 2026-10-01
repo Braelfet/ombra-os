@@ -74,7 +74,7 @@ jobs:
             cp /usr/share/ombra_color.txt /usr/share/ombra/ascii_logo.txt
           fi
 
-          # Виправлена конфігурація Fastfetch з гарними відступами
+          # Конфігурація Fastfetch з виправленими відступами
           cat << "EOFF" > /etc/skel/.config/fastfetch/config.jsonc
           {
             "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
@@ -123,24 +123,24 @@ jobs:
           echo "fastfetch" >> /etc/skel/.bashrc
           '
 
-      - name: Install Pure KDE Plasma 6 & Remove Debian Themes
+      - name: Install Pure KDE Plasma 6, Firefox & Tools
         run: |
           sudo chroot chroot bash -c '
           apt-get update
           apt-get install -y linux-image-amd64 live-boot systemd-sysv
           
-          # Повний пакетний склад
-          apt-get install -y plasma-workspace plasma-desktop konsole dolphin kate fastfetch htop cmatrix tty-clock calamares breeze-icon-theme plasma-nm plasma-pa sddm kdeconnect partitionmanager ark gwenview curl git sudo nano
+          # Пакети: додано Firefox ESR та Discover
+          apt-get install -y plasma-workspace plasma-desktop firefox-esr plasma-discover konsole dolphin kate fastfetch htop cmatrix tty-clock calamares breeze-icon-theme plasma-nm plasma-pa sddm kdeconnect partitionmanager ark gwenview curl git sudo nano network-manager
           
-          # Очищення від брендингу Debian
+          # Видалення залишків брендингу Debian
           apt-get purge -y desktop-base plymouth-theme-debian-spinner || true
           apt-get clean
           '
 
-      - name: Apply Breeze Dark theme and Create Auto Default Panel
+      - name: Apply Breeze Dark theme, Disable KWallet and Setup Panel Script
         run: |
           sudo chroot chroot bash -c '
-          mkdir -p /etc/skel/.config /etc/skel/.config/autostart
+          mkdir -p /etc/skel/.config /etc/skel/.config/autostart /usr/local/bin
           
           # Налаштування темної теми Breeze Dark
           cat << "EOF_KDE" > /etc/skel/.config/kdeglobals
@@ -151,15 +151,56 @@ jobs:
           LookAndFeelPackage=org.kde.breezedark.desktop
           EOF_KDE
 
-          # Автозапуск: Створення Default Panel та встановлення шпалер при першому завантаженні
-          cat << "EOF_PANEL_SCRIPT" > /etc/skel/.config/autostart/init_plasma_layout.desktop
+          # Вимкнення KWallet (прохання пароля при Wi-Fi)
+          cat << "EOF_KWALLET" > /etc/skel/.config/kwalletrc
+          [Wallet]
+          Enabled=false
+          First Use=false
+          EOF_KWALLET
+
+          # Налаштування NetworkManager
+          mkdir -p /etc/NetworkManager/conf.d
+          cat << "EOF_NM" > /etc/NetworkManager/conf.d/no-kwallet.conf
+          [main]
+          systemd-resolved=true
+          EOF_NM
+
+          # Створення окремого скрипту ініціалізації панелі та шпалер
+          cat << "EOF_SCRIPT" > /usr/local/bin/ombra-init-desktop
+          #!/bin/bash
+          sleep 2
+          dbus-send --session --dest=org.kde.plasmashell --type=method_call /PlasmaShell org.kde.PlasmaShell.evaluateScript "string:
+          if (panels().length === 0) {
+              var panel = new Panel();
+              panel.location = 'bottom';
+              panel.height = 44;
+              panel.addWidget('org.kde.plasma.kickoff');
+              panel.addWidget('org.kde.plasma.pager');
+              panel.addWidget('org.kde.plasma.icontasks');
+              panel.addWidget('org.kde.plasma.marginsseparator');
+              panel.addWidget('org.kde.plasma.systemtray');
+              panel.addWidget('org.kde.plasma.digitalclock');
+          }
+          var Desktops = desktops();
+          for (var i=0; i<Desktops.length; i++) {
+              var d = Desktops[i];
+              d.wallpaperPlugin = 'org.kde.image';
+              d.currentConfigGroup = Array('Wallpaper', 'org.kde.image', 'General');
+              d.writeConfig('Image', 'file:///usr/share/wallpapers/ombra_wallpaper.png');
+          }
+          "
+          EOF_SCRIPT
+
+          chmod +x /usr/local/bin/ombra-init-desktop
+
+          # Автозапуск скрипту при вході в систему
+          cat << "EOF_AUTOSTART" > /etc/skel/.config/autostart/ombra-init.desktop
           [Desktop Entry]
           Type=Application
-          Name=Initialize Ombra Plasma Layout
-          Exec=dbus-send --session --dest=org.kde.plasmashell --type=method_call /PlasmaShell org.kde.PlasmaShell.evaluateScript 'string:if (panels().length === 0) { var panel = new Panel(); panel.location = "bottom"; panel.height = 44; panel.addWidget("org.kde.plasma.kickoff"); panel.addWidget("org.kde.plasma.pager"); panel.addWidget("org.kde.plasma.icontasks"); panel.addWidget("org.kde.plasma.marginsseparator"); panel.addWidget("org.kde.plasma.systemtray"); panel.addWidget("org.kde.plasma.digitalclock"); } var Desktops = desktops(); for (i=0;i<Desktops.length;i++) { d = Desktops[i]; d.wallpaperPlugin = "org.kde.image"; d.currentConfigGroup = Array("Wallpaper", "org.kde.image", "General"); d.writeConfig("Image", "file:///usr/share/wallpapers/ombra_wallpaper.png"); }'
+          Name=Ombra Desktop Setup
+          Exec=/usr/local/bin/ombra-init-desktop
           OnlyShowIn=KDE;
-          X-KDE-autostart-phase=1
-          EOF_PANEL_SCRIPT
+          EOF_AUTOSTART
           '
 
       - name: Configure Live User (ombra) and SDDM Autologin
@@ -179,7 +220,7 @@ jobs:
           
           chown -R ombra:ombra /home/ombra
 
-          # Автологін у SDDM
+          # Автологін SDDM
           mkdir -p /etc/sddm.conf.d
           cat << "EOF_SDDM" > /etc/sddm.conf.d/autologin.conf
           [Autologin]
