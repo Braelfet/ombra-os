@@ -133,16 +133,20 @@ jobs:
         run: |
           sudo chroot chroot bash -ec '
           export DEBIAN_FRONTEND=noninteractive
+          export DEBIAN_PRIORITY=critical
+
+          # Отключаем интерактивные диалоги dpkg при конфликтах файлов
+          mkdir -p /etc/apt/apt.conf.d
+          echo "DPkg::Options { \"--force-confdef\"; \"--force-confold\"; };" > /etc/apt/apt.conf.d/99force-conf
+
           apt-get update
           apt-get install -y linux-image-amd64 live-boot systemd-sysv
           
-          # Встановлення софту
-          apt-get install -y plasma-workspace plasma-desktop firefox-esr plasma-discover konsole dolphin kate fastfetch htop cmatrix tty-clock calamares breeze-icon-theme plasma-nm plasma-pa sddm kdeconnect partitionmanager ark gwenview curl git sudo nano network-manager polkitd pkexec || true
+          # Установка софта с автоперезаписью ответов
+          apt-get install -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" \
+            plasma-workspace plasma-desktop firefox-esr plasma-discover konsole dolphin kate fastfetch htop cmatrix tty-clock calamares breeze-icon-theme plasma-nm plasma-pa sddm kdeconnect partitionmanager ark gwenview curl git sudo nano network-manager polkitd pkexec || true
           
-          # Очищення від конфліктних скриптів брендингу Debian
-          rm -f /var/lib/dpkg/info/desktop-base.prerm /var/lib/dpkg/info/desktop-base.postinst || true
           apt-get install -f -y
-          apt-get purge -y desktop-base plymouth-theme-debian-spinner || true
           apt-get clean
           '
 
