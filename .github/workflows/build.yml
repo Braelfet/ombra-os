@@ -72,7 +72,7 @@ jobs:
           HOME_URL="https://github.com/Braelfet/ombra-os"
           EOF_OS
 
-          echo "Ombra OS 1.0 \n \l" > /etc/issue
+          echo -e "Ombra OS 1.0 \n \l" > /etc/issue
           echo "Ombra OS 1.0" > /etc/issue.net
 
           if [ -f /usr/share/ombra_color.txt ]; then
@@ -137,11 +137,12 @@ jobs:
           apt-get clean
           '
 
-      - name: Apply Breeze Dark theme and UI settings
+      - name: Apply Breeze Dark theme and Fix Plasma Panel
         run: |
           sudo chroot chroot bash -c '
-          mkdir -p /etc/skel/.config
+          mkdir -p /etc/skel/.config /etc/skel/.config/autostart
           
+          # Налаштування темної теми Breeze Dark
           cat << "EOF_KDE" > /etc/skel/.config/kdeglobals
           [General]
           ColorScheme=BreezeDark
@@ -150,18 +151,14 @@ jobs:
           LookAndFeelPackage=org.kde.breezedark.desktop
           EOF_KDE
 
-          cat << "EOF_WALL" > /etc/skel/.config/plasma-org.kde.plasma.desktop-appletsrc
-          [Containments][1]
-          plugin=org.kde.panel
-          wallpaperplugin=org.kde.image
-
-          [Containments][2]
-          plugin=org.kde.desktopcontainment
-          wallpaperplugin=org.kde.image
-
-          [Containments][2][Wallpaper][org.kde.image][General]
-          Image=file:///usr/share/wallpapers/ombra_wallpaper.png
-          EOF_WALL
+          # Автоскрипт для установки шпалер Ombra OS без виклику падіння панелі
+          cat << "EOF_WALL_SCRIPT" > /etc/skel/.config/autostart/set_wallpaper.desktop
+          [Desktop Entry]
+          Type=Application
+          Name=Set Ombra Wallpaper
+          Exec=dbus-send --session --dest=org.kde.plasmashell --type=method_call /PlasmaShell org.kde.PlasmaShell.evaluateScript 'string:var Desktops = desktops(); for (i=0;i<Desktops.length;i++) { d = Desktops[i]; d.wallpaperPlugin = "org.kde.image"; d.currentConfigGroup = Array("Wallpaper", "org.kde.image", "General"); d.writeConfig("Image", "file:///usr/share/wallpapers/ombra_wallpaper.png"); }'
+          OnlyShowIn=KDE;
+          EOF_WALL_SCRIPT
           '
 
       - name: Configure Live User (ombra) and SDDM Autologin
