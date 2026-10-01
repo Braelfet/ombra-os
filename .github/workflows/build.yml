@@ -31,7 +31,7 @@ jobs:
 
       - name: Copy repository assets to chroot
         run: |
-          sudo mkdir -p chroot/usr/share/wallpapers/Ombra/contents/images chroot/usr/share/pixmaps chroot/etc/skel chroot/var/lib/AccountsService/icons chroot/usr/share/icons/hicolor/scalable/apps
+          sudo mkdir -p chroot/usr/share/wallpapers/Ombra/contents/images chroot/usr/share/pixmaps chroot/etc/skel chroot/var/lib/AccountsService/icons
           
           if [ -f "ombra_color.txt" ]; then
             sudo cp ombra_color.txt chroot/usr/share/ombra_color.txt
@@ -70,7 +70,6 @@ jobs:
           PRETTY_NAME="Ombra OS 1.0"
           VERSION_ID="1.0"
           HOME_URL="https://github.com/Braelfet/ombra-os"
-          LOGO="kde"
           EOF_OS
 
           echo -e "Ombra OS 1.0 \n \l" > /etc/issue
@@ -132,7 +131,7 @@ jobs:
           echo "fastfetch" >> /root/.bashrc
           '
 
-      - name: Install Pure KDE Plasma 6, Firefox, Calamares & Tools
+      - name: Install Pure KDE Plasma 6, Firefox, LocalSend & Tools
         run: |
           sudo chroot chroot bash -ec '
           export DEBIAN_FRONTEND=noninteractive
@@ -145,51 +144,9 @@ jobs:
           apt-get install -y linux-image-amd64 live-boot systemd-sysv wget curl
           
           apt-get install -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" \
-            plasma-workspace plasma-desktop firefox-esr plasma-discover konsole dolphin kate fastfetch htop cmatrix tty-clock calamares calamares-settings-debian breeze-icon-theme plasma-nm plasma-pa sddm kdeconnect partitionmanager ark gwenview git sudo nano network-manager polkitd pkexec || true
+            plasma-workspace plasma-desktop firefox-esr plasma-discover konsole dolphin kate fastfetch htop cmatrix tty-clock calamares breeze-icon-theme plasma-nm plasma-pa sddm kdeconnect partitionmanager ark gwenview git sudo nano network-manager polkitd pkexec || true
           
-          mkdir -p /etc/calamares
-          if [ ! -f /etc/calamares/settings.conf ]; then
-            cat << "EOF_CAL" > /etc/calamares/settings.conf
-modules-search: [ local, /usr/lib/x86_64-linux-gnu/calamares/modules ]
-
-sequence:
-- prepare:
-  - welcome
-  - locale
-  - keyboard
-  - partition
-  - users
-  - summary
-- install:
-  - partition
-  - mount
-  - unpackfs
-  - machineid
-  - fstab
-  - locale
-  - keyboard
-  - localecfg
-  - users
-  - displaymanager
-  - networkcfg
-  - hwclock
-  - initramfs
-  - grubcfg
-  - bootloader
-  - umount
-- finish:
-  - show
-
-branding: default
-prompt-install: false
-dont-chroot: false
-oem-setup: false
-disable-cancel: false
-disable-cancel-during-exec: false
-EOF_CAL
-          fi
-
-          echo "Downloading and installing LocalSend..."
+          echo "Завантаження та встановлення LocalSend..."
           LOCALSEND_URL=$(curl -s https://api.github.com/repos/localsend/localsend/releases/latest | grep "browser_download_url.*linux-x86-64.deb" | cut -d : -f 2,3 | tr -d \")
           if [ -n "$LOCALSEND_URL" ]; then
             wget -O /tmp/localsend.deb "$LOCALSEND_URL"
@@ -235,9 +192,31 @@ EOF_CAL
           systemd-resolved=true
           EOF_NM
 
-          echo "#!/bin/bash" > /usr/local/bin/ombra-init-desktop
-          echo "sleep 2" >> /usr/local/bin/ombra-init-desktop
-          echo "kwriteconfig6 --file kdeglobals --group General --key ColorScheme BreezeDark" >> /usr/local/bin/ombra-init-desktop
+          cat << "EOF_SCRIPT" > /usr/local/bin/ombra-init-desktop
+          #!/bin/bash
+          sleep 2
+          dbus-send --session --dest=org.kde.plasmashell --type=method_call /PlasmaShell org.kde.PlasmaShell.evaluateScript "string:
+          if (panels().length === 0) {
+              var panel = new Panel();
+              panel.location = 'bottom';
+              panel.height = 44;
+              panel.addWidget('org.kde.plasma.kickoff');
+              panel.addWidget('org.kde.plasma.pager');
+              panel.addWidget('org.kde.plasma.icontasks');
+              panel.addWidget('org.kde.plasma.marginsseparator');
+              panel.addWidget('org.kde.plasma.systemtray');
+              panel.addWidget('org.kde.plasma.digitalclock');
+          }
+          var Desktops = desktops();
+          for (var i=0; i<Desktops.length; i++) {
+              var d = Desktops[i];
+              d.wallpaperPlugin = 'org.kde.image';
+              d.currentConfigGroup = Array('Wallpaper', 'org.kde.image', 'General');
+              d.writeConfig('Image', 'file:///usr/share/wallpapers/ombra_wallpaper.png');
+          }
+          "
+          EOF_SCRIPT
+
           chmod +x /usr/local/bin/ombra-init-desktop
 
           cat << "EOF_AUTOSTART" > /etc/skel/.config/autostart/ombra-init.desktop
