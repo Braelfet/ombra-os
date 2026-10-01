@@ -139,7 +139,7 @@ jobs:
           echo "fastfetch" >> /root/.bashrc
           '
 
-      - name: Install Pure KDE Plasma 6, Firefox, LocalSend & Tools
+      - name: Install Pure KDE Plasma 6, Firefox & Tools
         run: |
           sudo chroot chroot bash -ec '
           export DEBIAN_FRONTEND=noninteractive
@@ -152,24 +152,8 @@ jobs:
           apt-get install -y linux-image-amd64 live-boot systemd-sysv wget curl
           
           apt-get install -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" \
-            plasma-workspace plasma-desktop firefox-esr plasma-discover konsole dolphin kate fastfetch htop cmatrix tty-clock calamares breeze-icon-theme plasma-nm plasma-pa sddm kdeconnect partitionmanager ark gwenview git sudo nano network-manager polkitd pkexec || true
+            plasma-workspace plasma-desktop firefox-esr plasma-discover konsole dolphin kate fastfetch htop cmatrix tty-clock calamares calamares-settings-debian breeze-icon-theme plasma-nm plasma-pa sddm kdeconnect partitionmanager ark gwenview git sudo nano network-manager polkitd pkexec || true
           
-          echo "Завантаження LocalSend AppImage..."
-          wget -O /usr/local/bin/LocalSend.AppImage "https://github.com/localsend/localsend/releases/download/v1.16.2/LocalSend-1.16.2-linux-x86-64.AppImage"
-          chmod +x /usr/local/bin/LocalSend.AppImage
-
-          mkdir -p /usr/share/applications
-          cat << "EOF_LS" > /usr/share/applications/localsend.desktop
-          [Desktop Entry]
-          Name=LocalSend
-          Comment=An open-source cross-platform alternative to AirDrop
-          Exec=/usr/local/bin/LocalSend.AppImage
-          Icon=network-workgroup
-          Terminal=false
-          Type=Application
-          Categories=Network;FileTransfer;Utility;
-          EOF_LS
-
           apt-get install -f -y
           apt-get clean
           '
@@ -216,7 +200,7 @@ jobs:
           GenericName=System Installer
           Comment=Install Ombra OS to your computer
           Exec=sudo calamares
-          Icon=system-software-install
+          Icon=/usr/share/pixmaps/ombra-logo.png
           Terminal=false
           Categories=System;
           EOF_CALAMARES
