@@ -135,18 +135,29 @@ jobs:
           apt-get install -y linux-image-amd64 live-boot systemd-sysv
           
           # Набір системного софту з веб-браузером Firefox
-          apt-get install -y plasma-workspace plasma-desktop firefox-esr plasma-discover konsole dolphin kate fastfetch htop cmatrix tty-clock calamares breeze-icon-theme plasma-nm plasma-pa sddm kdeconnect partitionmanager ark gwenview curl git sudo nano network-manager
+          apt-get install -y plasma-workspace plasma-desktop firefox-esr plasma-discover konsole dolphin kate fastfetch htop cmatrix tty-clock calamares breeze-icon-theme plasma-nm plasma-pa sddm kdeconnect partitionmanager ark gwenview curl git sudo nano network-manager policykit-1
           
           # Очищення від залишків Debian
           apt-get purge -y desktop-base plymouth-theme-debian-spinner || true
           apt-get clean
           '
 
-      - name: Apply Breeze Dark theme, Disable KWallet and Setup Panel Script
+      - name: Apply Breeze Dark theme, Passwordless Permissions & Desktop Script
         run: |
           sudo chroot chroot bash -c '
-          mkdir -p /etc/skel/.config /etc/skel/.config/autostart /usr/local/bin
+          mkdir -p /etc/skel/.config /etc/skel/.config/autostart /usr/local/bin /etc/polkit-1/rules.d /etc/sudoers.d
           
+          # 1. Відключення запиту пароля через Sudo
+          echo "ALL ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/99-nopasswd
+          chmod 0440 /etc/sudoers.d/99-nopasswd
+
+          # 2. Відключення запиту пароля в GUI (Polkit для SDDM та налаштувань)
+          cat << "EOF_POLKIT" > /etc/polkit-1/rules.d/49-nopasswd_global.rules
+          polkit.addRule(function(action, subject) {
+              return polkit.Result.YES;
+          });
+          EOF_POLKIT
+
           # Налаштування темної теми Breeze Dark
           cat << "EOF_KDE" > /etc/skel/.config/kdeglobals
           [General]
