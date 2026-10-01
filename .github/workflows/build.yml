@@ -256,6 +256,7 @@ jobs:
           Exec=/usr/local/bin/ombra-init-desktop
           OnlyShowIn=KDE;
           EOF_AUTOSTART
+          chmod +x /etc/skel/.config/autostart/ombra-init.desktop
           '
 
       - name: Configure Live User (ombra) and SDDM Autologin
@@ -287,19 +288,22 @@ jobs:
 
       - name: Unmount virtual filesystems before packing
         run: |
-          sudo umount -l chroot/dev/pts || true
-          sudo umount -l chroot/dev || true
-          sudo umount -l chroot/proc || true
-          sudo umount -l chroot/sys || true
+          sudo umount -f -l chroot/dev/pts || true
+          sudo umount -f -l chroot/dev || true
+          sudo umount -f -l chroot/proc || true
+          sudo umount -f -l chroot/sys || true
 
       - name: Prepare ISO Structure and GRUB Boot Config
         run: |
           mkdir -p iso/live iso/boot/grub
           
-          sudo cp chroot/boot/vmlinuz-* iso/live/vmlinuz
-          sudo cp chroot/boot/initrd.img-* iso/live/initrd.img
+          VMLINUZ=$(ls chroot/boot/vmlinuz-* | head -n 1)
+          INITRD=$(ls chroot/boot/initrd.img-* | head -n 1)
           
-          sudo mksquashfs chroot iso/live/filesystem.squashfs -comp xz
+          sudo cp "$VMLINUZ" iso/live/vmlinuz
+          sudo cp "$INITRD" iso/live/initrd.img
+          
+          sudo mksquashfs chroot iso/live/filesystem.squashfs -comp xz -e proc sys dev run
           
           cat << 'EOF' > iso/boot/grub/grub.cfg
           set default=0
