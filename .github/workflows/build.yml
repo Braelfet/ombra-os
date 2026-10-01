@@ -129,7 +129,8 @@ jobs:
           apt-get update
           apt-get install -y linux-image-amd64 live-boot systemd-sysv
           
-          apt-get install -y plasma-workspace plasma-desktop firefox-esr plasma-discover konsole dolphin kate fastfetch htop cmatrix tty-clock calamares breeze-icon-theme plasma-nm plasma-pa sddm kdeconnect partitionmanager ark gwenview curl git sudo nano network-manager policykit-1
+          # Замінено policykit-1 на polkitd та pkexec
+          apt-get install -y plasma-workspace plasma-desktop firefox-esr plasma-discover konsole dolphin kate fastfetch htop cmatrix tty-clock calamares breeze-icon-theme plasma-nm plasma-pa sddm kdeconnect partitionmanager ark gwenview curl git sudo nano network-manager polkitd pkexec
           
           apt-get purge -y desktop-base plymouth-theme-debian-spinner || true
           apt-get clean
