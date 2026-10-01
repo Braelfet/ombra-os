@@ -42,11 +42,6 @@ jobs:
             sudo cp wallpaper.jpg chroot/usr/share/wallpapers/ombra_wallpaper.png
           fi
 
-          # Копіювання логотипу
-          if [ -f "logo.png" ]; then
-            sudo cp logo.png chroot/usr/share/pixmaps/ombra_logo.png
-          fi
-
           # Копіювання аватарки
           if [ -f "avatar.png" ]; then
             sudo cp avatar.png chroot/etc/skel/.face
@@ -61,7 +56,7 @@ jobs:
           sudo chroot chroot bash -c '
           mkdir -p /usr/share/ombra /etc/skel/.config/fastfetch
           
-          # Оновлення файлів системного брендингу
+          # Оновлення системного брендингу
           cat << "EOF_OS" > /etc/os-release
           NAME="Ombra OS"
           VERSION="1.0 (Trixie)"
@@ -129,15 +124,15 @@ jobs:
           apt-get update
           apt-get install -y linux-image-amd64 live-boot systemd-sysv
           
-          # Комплект необхідних пакетів + утиліти
+          # Комплект необхідних пакетів
           apt-get install -y plasma-workspace plasma-desktop konsole dolphin kate fastfetch htop cmatrix tty-clock calamares breeze-icon-theme plasma-nm plasma-pa sddm kdeconnect partitionmanager ark gwenview curl git sudo nano
           
-          # Повне видалення слідів Debian
+          # Видалення брендингу Debian
           apt-get purge -y desktop-base plymouth-theme-debian-spinner || true
           apt-get clean
           '
 
-      - name: Apply Breeze Dark theme and Fix Plasma Panel
+      - name: Apply Breeze Dark theme and Wallpaper
         run: |
           sudo chroot chroot bash -c '
           mkdir -p /etc/skel/.config /etc/skel/.config/autostart
@@ -151,7 +146,7 @@ jobs:
           LookAndFeelPackage=org.kde.breezedark.desktop
           EOF_KDE
 
-          # Автоскрипт для установки шпалер Ombra OS без виклику падіння панелі
+          # Автозапуск встановлення шпалер для першого входу
           cat << "EOF_WALL_SCRIPT" > /etc/skel/.config/autostart/set_wallpaper.desktop
           [Desktop Entry]
           Type=Application
@@ -178,7 +173,7 @@ jobs:
           
           chown -R ombra:ombra /home/ombra
 
-          # Автологін без запиту пароля при завантаженні Live ISO
+          # Налаштування SDDM автологіну
           mkdir -p /etc/sddm.conf.d
           cat << "EOF_SDDM" > /etc/sddm.conf.d/autologin.conf
           [Autologin]
