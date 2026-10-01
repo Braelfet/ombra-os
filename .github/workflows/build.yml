@@ -16,7 +16,7 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y debootstrap squashfs-tools xorriso grub-pc-bin grub-efi-amd64-bin mtools debian-archive-keyring
+          sudo apt-get install -y debootstrap squashfs-tools xorriso grub-pc-bin grub-efi-amd64-bin mtools debian-archive-keyring wget curl
 
       - name: Create chroot environment
         run: |
@@ -31,7 +31,7 @@ jobs:
 
       - name: Copy repository assets to chroot
         run: |
-          sudo mkdir -p chroot/usr/share/wallpapers/Ombra/contents/images chroot/usr/share/pixmaps chroot/etc/skel chroot/var/lib/AccountsService/icons
+          sudo mkdir -p chroot/usr/share/wallpapers/Ombra/contents/images chroot/usr/share/pixmaps chroot/etc/skel chroot/var/lib/AccountsService/icons chroot/usr/share/icons/hicolor/scalable/apps
           
           if [ -f "ombra_color.txt" ]; then
             sudo cp ombra_color.txt chroot/usr/share/ombra_color.txt
@@ -50,9 +50,11 @@ jobs:
           if [ -f "avatar.png" ]; then
             sudo cp avatar.png chroot/etc/skel/.face
             sudo cp avatar.png chroot/var/lib/AccountsService/icons/ombra
+            sudo cp avatar.png chroot/usr/share/pixmaps/ombra-logo.png
           elif [ -f "logob.png" ]; then
             sudo cp logob.png chroot/etc/skel/.face
             sudo cp logob.png chroot/var/lib/AccountsService/icons/ombra
+            sudo cp logob.png chroot/usr/share/pixmaps/ombra-logo.png
           fi
 
       - name: Configure Ombra OS branding and Fastfetch
@@ -60,14 +62,16 @@ jobs:
           sudo chroot chroot bash -ec '
           mkdir -p /usr/share/ombra /etc/skel/.config/fastfetch /etc/fastfetch /root/.config/fastfetch
           
+          # Налаштування інформації про систему для KDE Settings / Fastfetch
           cat << "EOF_OS" > /etc/os-release
           NAME="Ombra OS"
-          VERSION="1.0 (Trixie)"
+          VERSION="1.0"
           ID=ombra
           ID_LIKE=debian
-          PRETTY_NAME="Ombra OS Trixie/Testing"
+          PRETTY_NAME="Ombra OS 1.0"
           VERSION_ID="1.0"
           HOME_URL="https://github.com/Braelfet/ombra-os"
+          LOGO="kde"
           EOF_OS
 
           echo -e "Ombra OS 1.0 \n \l" > /etc/issue
@@ -129,23 +133,74 @@ jobs:
           echo "fastfetch" >> /root/.bashrc
           '
 
-      - name: Install Pure KDE Plasma 6, Firefox & Tools
+      - name: Install Pure KDE Plasma 6, Firefox, Calamares & Tools
         run: |
           sudo chroot chroot bash -ec '
           export DEBIAN_FRONTEND=noninteractive
           export DEBIAN_PRIORITY=critical
 
-          # Отключаем интерактивные диалоги dpkg при конфликтах файлов
           mkdir -p /etc/apt/apt.conf.d
           echo "DPkg::Options { \"--force-confdef\"; \"--force-confold\"; };" > /etc/apt/apt.conf.d/99force-conf
 
           apt-get update
-          apt-get install -y linux-image-amd64 live-boot systemd-sysv
+          apt-get install -y linux-image-amd64 live-boot systemd-sysv wget curl
           
-          # Установка софта с автоперезаписью ответов
+          # Установка софту + calamares-settings-debian
           apt-get install -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" \
-            plasma-workspace plasma-desktop firefox-esr plasma-discover konsole dolphin kate fastfetch htop cmatrix tty-clock calamares breeze-icon-theme plasma-nm plasma-pa sddm kdeconnect partitionmanager ark gwenview curl git sudo nano network-manager polkitd pkexec || true
+            plasma-workspace plasma-desktop firefox-esr plasma-discover konsole dolphin kate fastfetch htop cmatrix tty-clock calamares calamares-settings-debian breeze-icon-theme plasma-nm plasma-pa sddm kdeconnect partitionmanager ark gwenview git sudo nano network-manager polkitd pkexec || true
           
+          # Фікс конфігураційного файлу для Calamares
+          mkdir -p /etc/calamares
+          if [ ! -f /etc/calamares/settings.conf ]; then
+            cat << "EOF_CAL" > /etc/calamares/settings.conf
+modules-search: [ local, /usr/lib/x86_64-linux-gnu/calamares/modules ]
+
+sequence:
+- prepare:
+  - welcome
+  - locale
+  - keyboard
+  - partition
+  - users
+  - summary
+- install:
+  - partition
+  - mount
+  - unpackfs
+  - machineid
+  - fstab
+  - locale
+  - keyboard
+  - localecfg
+  - users
+  - displaymanager
+  - networkcfg
+  - hwclock
+  - initramfs
+  - grubcfg
+  - bootloader
+  - umount
+- finish:
+  - show
+
+branding: default
+prompt-install: false
+dont-chroot: false
+oem-setup: false
+disable-cancel: false
+disable-cancel-during-exec: false
+EOF_CAL
+          fi
+
+          # Встановлення LocalSend з офіційного GitHub репозиторію
+          echo "Downloading and installing LocalSend..."
+          LOCALSEND_URL=$(curl -s https://api.github.com/repos/localsend/localsend/releases/latest | grep "browser_download_url.*linux-x86-64.deb" | cut -d : -f 2,3 | tr -d \")
+          if [ -n "$LOCALSEND_URL" ]; then
+            wget -O /tmp/localsend.deb "$LOCALSEND_URL"
+            dpkg -i /tmp/localsend.deb || apt-get install -f -y
+            rm -f /tmp/localsend.deb
+          fi
+
           apt-get install -f -y
           apt-get clean
           '
@@ -280,7 +335,7 @@ jobs:
           grub-mkrescue -o ombra-os-trixie-kde.iso iso/
 
       - name: Upload ISO Artifact
-        uses: actions/upload-artifact@v4
+        uses: ashes/upload-artifact@v4
         with:
           name: Ombra-OS-ISO
           path: ombra-os-trixie-kde.iso
