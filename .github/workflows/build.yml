@@ -54,7 +54,7 @@ jobs:
       - name: Configure Ombra OS branding and Fastfetch
         run: |
           sudo chroot chroot bash -c '
-          mkdir -p /usr/share/ombra /etc/skel/.config/fastfetch
+          mkdir -p /usr/share/ombra /etc/skel/.config/fastfetch /etc/fastfetch /root/.config/fastfetch
           
           # Системний брендинг
           cat << "EOF_OS" > /etc/os-release
@@ -74,8 +74,8 @@ jobs:
             cp /usr/share/ombra_color.txt /usr/share/ombra/ascii_logo.txt
           fi
 
-          # Конфігурація Fastfetch з виправленими відступами
-          cat << "EOFF" > /etc/skel/.config/fastfetch/config.jsonc
+          # Глобальна конфігурація Fastfetch (для звичайних юзерів та sudo/root)
+          cat << "EOFF" > /etc/fastfetch/config.jsonc
           {
             "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
             "logo": {
@@ -120,7 +120,12 @@ jobs:
           }
           EOFF
 
+          # Копіювання конфігу користувачам
+          cp /etc/fastfetch/config.jsonc /etc/skel/.config/fastfetch/config.jsonc
+          cp /etc/fastfetch/config.jsonc /root/.config/fastfetch/config.jsonc
+
           echo "fastfetch" >> /etc/skel/.bashrc
+          echo "fastfetch" >> /root/.bashrc
           '
 
       - name: Install Pure KDE Plasma 6, Firefox & Tools
@@ -129,10 +134,10 @@ jobs:
           apt-get update
           apt-get install -y linux-image-amd64 live-boot systemd-sysv
           
-          # Пакети: додано Firefox ESR та Discover
+          # Набір системного софту з веб-браузером Firefox
           apt-get install -y plasma-workspace plasma-desktop firefox-esr plasma-discover konsole dolphin kate fastfetch htop cmatrix tty-clock calamares breeze-icon-theme plasma-nm plasma-pa sddm kdeconnect partitionmanager ark gwenview curl git sudo nano network-manager
           
-          # Видалення залишків брендингу Debian
+          # Очищення від залишків Debian
           apt-get purge -y desktop-base plymouth-theme-debian-spinner || true
           apt-get clean
           '
@@ -151,7 +156,7 @@ jobs:
           LookAndFeelPackage=org.kde.breezedark.desktop
           EOF_KDE
 
-          # Вимкнення KWallet (прохання пароля при Wi-Fi)
+          # Вимкнення KWallet
           cat << "EOF_KWALLET" > /etc/skel/.config/kwalletrc
           [Wallet]
           Enabled=false
