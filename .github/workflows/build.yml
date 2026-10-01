@@ -235,31 +235,9 @@ EOF_CAL
           systemd-resolved=true
           EOF_NM
 
-          cat << "EOF_SCRIPT" > /usr/local/bin/ombra-init-desktop
-          #!/bin/bash
-          sleep 2
-          dbus-send --session --dest=org.kde.plasmashell --type=method_call /PlasmaShell org.kde.PlasmaShell.evaluateScript "string:
-          if (panels().length === 0) {
-              var panel = new Panel();
-              panel.location = 'bottom';
-              panel.height = 44;
-              panel.addWidget('org.kde.plasma.kickoff');
-              panel.addWidget('org.kde.plasma.pager');
-              panel.addWidget('org.kde.plasma.icontasks');
-              panel.addWidget('org.kde.plasma.marginsseparator');
-              panel.addWidget('org.kde.plasma.systemtray');
-              panel.addWidget('org.kde.plasma.digitalclock');
-          }
-          var Desktops = desktops();
-          for (var i=0; i<Desktops.length; i++) {
-              var d = Desktops[i];
-              d.wallpaperPlugin = 'org.kde.image';
-              d.currentConfigGroup = Array('Wallpaper', 'org.kde.image', 'General');
-              d.writeConfig('Image', 'file:///usr/share/wallpapers/ombra_wallpaper.png');
-          }
-          "
-          EOF_SCRIPT
-
+          echo "#!/bin/bash" > /usr/local/bin/ombra-init-desktop
+          echo "sleep 2" >> /usr/local/bin/ombra-init-desktop
+          echo "kwriteconfig6 --file kdeglobals --group General --key ColorScheme BreezeDark" >> /usr/local/bin/ombra-init-desktop
           chmod +x /usr/local/bin/ombra-init-desktop
 
           cat << "EOF_AUTOSTART" > /etc/skel/.config/autostart/ombra-init.desktop
