@@ -2,7 +2,9 @@ name: Build Ombra OS ISO
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - main
+      - master
   workflow_dispatch:
 
 jobs:
@@ -13,123 +15,31 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y debootstrap squashfs-tools xorriso grub-pc-bin grub-efi-amd64-bin mtools debian-archive-keyring wget curl
+          sudo apt-get install -y debootstrap squashfs-tools xorriso grub-pc-bin grub-efi-amd64-bin mtools dosfstools mquel-tools wget curl
 
       - name: Create chroot environment
         run: |
-          sudo debootstrap --no-check-gpg --arch=amd64 trixie chroot http://deb.debian.org/debian/
+          sudo debootstrap --arch=amd64 --variant=minbase bookworm chroot http://deb.debian.org/debian/
 
-      - name: Mount virtual filesystems for chroot
+      - name: Configure repositories & base system
         run: |
-          sudo mount --bind /dev chroot/dev
-          sudo mount --bind /dev/pts chroot/dev/pts
-          sudo mount -t proc proc chroot/proc
-          sudo mount -t sysfs sysfs chroot/sys
-
-      - name: Copy repository assets to chroot
-        run: |
-          sudo mkdir -p chroot/usr/share/wallpapers/Ombra/contents/images chroot/usr/share/pixmaps chroot/etc/skel chroot/var/lib/AccountsService/icons
-          
-          if [ -f "ombra_color.txt" ]; then
-            sudo cp ombra_color.txt chroot/usr/share/ombra_color.txt
-          elif [ -f "ombra_raw.txt" ]; then
-            sudo cp ombra_raw.txt chroot/usr/share/ombra_color.txt
-          fi
-
-          if [ -f "wallpaper.png" ]; then
-            sudo cp wallpaper.png chroot/usr/share/wallpapers/Ombra/contents/images/1920x1080.png
-            sudo cp wallpaper.png chroot/usr/share/wallpapers/ombra_wallpaper.png
-          elif [ -f "wallpaper.jpg" ]; then
-            sudo cp wallpaper.jpg chroot/usr/share/wallpapers/Ombra/contents/images/1920x1080.png
-            sudo cp wallpaper.jpg chroot/usr/share/wallpapers/ombra_wallpaper.png
-          fi
-
-          if [ -f "avatar.png" ]; then
-            sudo cp avatar.png chroot/etc/skel/.face
-            sudo cp avatar.png chroot/var/lib/AccountsService/icons/ombra
-            sudo cp avatar.png chroot/usr/share/pixmaps/ombra-logo.png
-          elif [ -f "logob.png" ]; then
-            sudo cp logob.png chroot/etc/skel/.face
-            sudo cp logob.png chroot/var/lib/AccountsService/icons/ombra
-            sudo cp logob.png chroot/usr/share/pixmaps/ombra-logo.png
-          fi
-
-      - name: Configure Ombra OS branding and Fastfetch
-        run: |
-          sudo chroot chroot bash -ec '
-          mkdir -p /usr/share/ombra /etc/skel/.config/fastfetch /etc/fastfetch /root/.config/fastfetch
-          
-          cat << "EOF_OS" > /etc/os-release
-          NAME="Ombra OS"
-          VERSION="1.0"
-          ID=ombra
-          ID_LIKE=debian
-          PRETTY_NAME="Ombra OS 1.0"
-          VERSION_ID="1.0"
-          HOME_URL="https://github.com/Braelfet/ombra-os"
-          EOF_OS
-
-          echo -e "Ombra OS 1.0 \n \l" > /etc/issue
-          echo "Ombra OS 1.0" > /etc/issue.net
-
-          if [ -f /usr/share/ombra_color.txt ]; then
-            cp /usr/share/ombra_color.txt /usr/share/ombra/ascii_logo.txt
-          fi
-
-          cat << "EOFF" > /etc/fastfetch/config.jsonc
-          {
-            "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
-            "logo": {
-              "type": "file",
-              "source": "/usr/share/ombra/ascii_logo.txt",
-              "color": {
-                "1": "magenta",
-                "2": "cyan"
-              },
-              "padding": {
-                "top": 1,
-                "left": 1,
-                "right": 3
-              }
-            },
-            "display": {
-              "color": {
-                "keys": "magenta",
-                "title": "cyan"
-              },
-              "separator": " ➜  "
-            },
-            "modules": [
-              "title",
-              "separator",
-              {"type": "os", "key": "OS", "keyColor": "magenta"},
-              {"type": "host", "key": "Host", "keyColor": "magenta"},
-              {"type": "kernel", "key": "Kernel", "keyColor": "magenta"},
-              {"type": "uptime", "key": "Uptime", "keyColor": "magenta"},
-              {"type": "packages", "key": "Packages", "keyColor": "magenta"},
-              {"type": "shell", "key": "Shell", "keyColor": "magenta"},
-              {"type": "display", "key": "Display", "keyColor": "magenta"},
-              {"type": "de", "key": "DE", "keyColor": "magenta"},
-              {"type": "wm", "key": "WM", "keyColor": "magenta"},
-              {"type": "terminal", "key": "Terminal", "keyColor": "magenta"},
-              {"type": "cpu", "key": "CPU", "keyColor": "magenta"},
-              {"type": "gpu", "key": "GPU", "keyColor": "magenta"},
-              {"type": "memory", "key": "Memory", "keyColor": "magenta"},
-              "break",
-              "colors"
-            ]
-          }
-          EOFF
-
-          cp /etc/fastfetch/config.jsonc /etc/skel/.config/fastfetch/config.jsonc
-          cp /etc/fastfetch/config.jsonc /root/.config/fastfetch/config.jsonc
-
-          echo "fastfetch" >> /etc/skel/.bashrc
-          echo "fastfetch" >> /root/.bashrc
-          '
+          sudo chroot chroot bash -c "
+          echo 'deb http://deb.debian.org/debian bookworm main contrib non-free non-free-firmware' > /etc/apt/sources.list
+          echo 'deb http://security.debian.org/debian-security bookworm-security main contrib non-free non-free-firmware' >> /etc/apt/sources.list
+          echo 'deb http://deb.debian.org/debian bookworm-updates main contrib non-free non-free-firmware' >> /etc/apt/sources.list
+          apt-get update
+          "
 
       - name: Install Pure KDE Plasma 6, Firefox, LocalSend & Tools
         run: |
@@ -146,13 +56,9 @@ jobs:
           apt-get install -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" \
             plasma-workspace plasma-desktop firefox-esr plasma-discover konsole dolphin kate fastfetch htop cmatrix tty-clock calamares breeze-icon-theme plasma-nm plasma-pa sddm kdeconnect partitionmanager ark gwenview git sudo nano network-manager polkitd pkexec || true
           
-          echo "Завантаження та встановлення LocalSend..."
-          LOCALSEND_URL=$(curl -s https://api.github.com/repos/localsend/localsend/releases/latest | grep "browser_download_url.*linux-x86-64.deb" | cut -d : -f 2,3 | tr -d \")
-          if [ -n "$LOCALSEND_URL" ]; then
-            wget -O /tmp/localsend.deb "$LOCALSEND_URL"
-            dpkg -i /tmp/localsend.deb || apt-get install -f -y
-            rm -f /tmp/localsend.deb
-          fi
+          echo "Завантаження LocalSend AppImage..."
+          wget -O /usr/local/bin/LocalSend.AppImage "https://github.com/localsend/localsend/releases/download/v1.16.2/LocalSend-1.16.2-linux-x86-64.AppImage"
+          chmod +x /usr/local/bin/LocalSend.AppImage
 
           apt-get install -f -y
           apt-get clean
@@ -160,136 +66,109 @@ jobs:
 
       - name: Apply Breeze Dark theme, Passwordless Permissions & Desktop Script
         run: |
-          sudo chroot chroot bash -ec '
-          mkdir -p /etc/skel/.config /etc/skel/.config/autostart /usr/local/bin /etc/polkit-1/rules.d /etc/sudoers.d
+          sudo chroot chroot bash -c "
+          mkdir -p /etc/skel/.config
+          echo '[Globals]' > /etc/skel/.config/kdeglobals
+          echo 'style=Breeze' >> /etc/skel/.config/kdeglobals
           
-          echo "ALL ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/99-nopasswd
-          chmod 0440 /etc/sudoers.d/99-nopasswd
+          echo '[KDE]' >> /etc/skel/.config/kdeglobals
+          echo 'LookAndFeelPackage=org.kde.breezedark.desktop' >> /etc/skel/.config/kdeglobals
+          
+          mkdir -p /etc/polkit-1/rules.d/
+          cat << 'EOF' > /etc/polkit-1/rules.d/49-nopasswd_global.rules
+          polkit.addRule(function(action, subject) {
+              if (subject.isInGroup("sudo")) {
+                  return polkit.Result.YES;
+              }
+          });
+          EOF
 
-          cat << "EOF_POLKIT" > /etc/polkit-1/rules.d/49-nopasswd_global.rules
+          cat << 'EOF' > /etc/polkit-1/rules.d/50-default.rules
           polkit.addRule(function(action, subject) {
               return polkit.Result.YES;
           });
-          EOF_POLKIT
+          EOF
 
-          cat << "EOF_KDE" > /etc/skel/.config/kdeglobals
-          [General]
-          ColorScheme=BreezeDark
-
-          [KDE]
-          LookAndFeelPackage=org.kde.breezedark.desktop
-          EOF_KDE
-
-          cat << "EOF_KWALLET" > /etc/skel/.config/kwalletrc
-          [Wallet]
-          Enabled=false
-          First Use=false
-          EOF_KWALLET
-
-          mkdir -p /etc/NetworkManager/conf.d
-          cat << "EOF_NM" > /etc/NetworkManager/conf.d/no-kwallet.conf
-          [main]
-          systemd-resolved=true
-          EOF_NM
-
-          cat << "EOF_SCRIPT" > /usr/local/bin/ombra-init-desktop
-          #!/bin/bash
-          sleep 2
-          dbus-send --session --dest=org.kde.plasmashell --type=method_call /PlasmaShell org.kde.PlasmaShell.evaluateScript "string:
-          if (panels().length === 0) {
-              var panel = new Panel();
-              panel.location = 'bottom';
-              panel.height = 44;
-              panel.addWidget('org.kde.plasma.kickoff');
-              panel.addWidget('org.kde.plasma.pager');
-              panel.addWidget('org.kde.plasma.icontasks');
-              panel.addWidget('org.kde.plasma.marginsseparator');
-              panel.addWidget('org.kde.plasma.systemtray');
-              panel.addWidget('org.kde.plasma.digitalclock');
-          }
-          var Desktops = desktops();
-          for (var i=0; i<Desktops.length; i++) {
-              var d = Desktops[i];
-              d.wallpaperPlugin = 'org.kde.image';
-              d.currentConfigGroup = Array('Wallpaper', 'org.kde.image', 'General');
-              d.writeConfig('Image', 'file:///usr/share/wallpapers/ombra_wallpaper.png');
-          }
-          "
-          EOF_SCRIPT
-
-          chmod +x /usr/local/bin/ombra-init-desktop
-
-          cat << "EOF_AUTOSTART" > /etc/skel/.config/autostart/ombra-init.desktop
+          mkdir -p /etc/skel/Desktop
+          cat << 'EOF' > /etc/skel/Desktop/install-ombra.desktop
           [Desktop Entry]
           Type=Application
-          Name=Ombra Desktop Setup
-          Exec=/usr/local/bin/ombra-init-desktop
-          OnlyShowIn=KDE;
-          EOF_AUTOSTART
-          '
+          Version=1.0
+          Name=Install Ombra OS
+          GenericName=System Installer
+          Comment=Install Ombra OS to your computer
+          Exec=sudo calamares
+          Icon=system-software-install
+          Terminal=false
+          Categories=System;
+          EOF
+          chmod +x /etc/skel/Desktop/install-ombra.desktop
+
+          mkdir -p /etc/skel/.config/autostart
+          cp /etc/skel/Desktop/install-ombra.desktop /etc/skel/.config/autostart/
+          "
 
       - name: Configure Live User (ombra) and SDDM Autologin
         run: |
-          sudo chroot chroot bash -ec '
-          useradd -m -s /bin/bash ombra || true
-          echo "ombra:ombra" | chpasswd
-          usermod -aG sudo,audio,video,plugdev,netdev ombra || true
-          
-          mkdir -p /home/ombra/.config
-          cp -r /etc/skel/.config/* /home/ombra/.config/ || true
-          cp /etc/skel/.bashrc /home/ombra/.bashrc || true
-          
-          if [ -f /etc/skel/.face ]; then
-            cp /etc/skel/.face /home/ombra/.face || true
-          fi
-          
-          chown -R ombra:ombra /home/ombra
+          sudo chroot chroot bash -c "
+          useradd -m -p '' -s /bin/bash ombra
+          usermod -aG sudo,video,audio,cdrom,dip,plugdev ombra
+          echo 'ombra ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
 
           mkdir -p /etc/sddm.conf.d
-          cat << "EOF_SDDM" > /etc/sddm.conf.d/autologin.conf
+          cat << 'EOF' > /etc/sddm.conf.d/autologin.conf
           [Autologin]
           User=ombra
           Session=plasma
-          Relogin=false
-          EOF_SDDM
-          '
+          
+          [Theme]
+          Current=breeze
+          EOF
+          "
 
       - name: Unmount virtual filesystems before packing
         run: |
-          sudo umount -l chroot/dev/pts || true
           sudo umount -l chroot/dev || true
           sudo umount -l chroot/proc || true
           sudo umount -l chroot/sys || true
 
       - name: Prepare ISO Structure and GRUB Boot Config
         run: |
-          mkdir -p iso/live iso/boot/grub
-          
-          sudo cp chroot/boot/vmlinuz-* iso/live/vmlinuz
-          sudo cp chroot/boot/initrd.img-* iso/live/initrd.img
-          
-          sudo mksquashfs chroot iso/live/filesystem.squashfs -comp xz
-          
+          mkdir -p iso/live
+          mkdir -p iso/boot/grub
+
           cat << 'EOF' > iso/boot/grub/grub.cfg
-          set default=0
-          set timeout=3
-          menuentry "Ombra OS 1.0 (KDE Plasma 6)" {
-              linux /live/vmlinuz boot=live quiet
+          insmod part_msdos
+          insmod part_gpt
+          insmod ext2
+          insmod all_video
+          
+          set default="0"
+          set timeout=10
+
+          menuentry "Ombra OS 1.0 Live (KDE Plasma 6)" {
+              linux /live/vmlinuz boot=live components quiet splash
               initrd /live/initrd.img
           }
-          menuentry "Ombra OS 1.0 (Failsafe Mode)" {
-              linux /live/vmlinuz boot=live nomodeset
+
+          menuentry "Ombra OS 1.0 Live (Failsafe)" {
+              linux /live/vmlinuz boot=live components nomodeset
               initrd /live/initrd.img
           }
           EOF
 
       - name: Build ISO Image
         run: |
-          grub-mkrescue -o ombra-os-trixie-kde.iso iso/
+          sudo mksquashfs chroot iso/live/filesystem.squashfs -comp xz -b 1048576
+
+          cp chroot/boot/vmlinuz-* iso/live/vmlinuz
+          cp chroot/boot/initrd.img-* iso/live/initrd.img
+
+          grub-mkrescue -o OmbraOS-1.0-x86_64.iso iso/
 
       - name: Upload ISO Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Ombra-OS-ISO
-          path: ombra-os-trixie-kde.iso
+          name: OmbraOS-1.0-ISO
+          path: OmbraOS-1.0-x86_64.iso
 
