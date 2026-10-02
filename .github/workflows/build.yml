@@ -156,15 +156,22 @@ jobs:
           echo "DPkg::Options { \"--force-confdef\"; \"--force-confold\"; };" > /etc/apt/apt.conf.d/99force-conf
 
           apt-get update
-          apt-get install -y linux-image-amd64 live-boot live-config live-config-systemd systemd-sysv wget curl
           
+          # Спочатку встановлюємо ядро та компоненти live-boot
+          apt-get install -y linux-image-amd64 live-boot live-config live-config-systemd systemd-sysv wget curl squashfs-tools
+
+          # Примусово налаштовуємо initramfs для роботи в Live-режимі
+          mkdir -p /etc/initramfs-tools/conf.d
+          echo "BOOT=live" > /etc/initramfs-tools/conf.d/live.conf
+
+          # Встановлюємо робоче середовище, Calamares та інструменти
           apt-get install -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" \
             plasma-workspace plasma-desktop firefox-esr plasma-discover konsole dolphin kate fastfetch htop cmatrix tty-clock calamares calamares-settings-debian breeze-icon-theme plasma-nm plasma-pa sddm kdeconnect partitionmanager ark gwenview git sudo nano network-manager polkitd pkexec || true
           
-          # Оновлюємо initramfs для коректного завантаження Live ISO
+          # Оновлюємо initramfs зі створеними правилами Live
           update-initramfs -u -k all
 
-          # Фікс конфігурації Calamares
+          # Перевіряємо конфігуратор Calamares
           if [ ! -f /etc/calamares/settings.conf ] && [ -f /etc/calamares/settings.conf.debian ]; then
             cp /etc/calamares/settings.conf.debian /etc/calamares/settings.conf
           fi
@@ -267,6 +274,7 @@ jobs:
           
           mkdir -p /home/ombra/.config /home/ombra/Desktop
           cp -r /etc/skel/.config/* /home/ombra/.config/ || true
+          cp -r /etc/skel/.config/autostart/* /home/ombra/.config/autostart/ || true
           cp -r /etc/skel/Desktop/* /home/ombra/Desktop/ || true
           cp /etc/skel/.bashrc /home/ombra/.bashrc || true
           
