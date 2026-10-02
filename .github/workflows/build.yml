@@ -145,7 +145,7 @@ jobs:
           echo "fastfetch" >> /root/.bashrc
           '
 
-      - name: Install Pure KDE Plasma 6, Firefox & Tools
+      - name: Install Packages, Fix initramfs for Live Boot
         run: |
           sudo chroot chroot bash -ec '
           export DEBIAN_FRONTEND=noninteractive
@@ -155,21 +155,33 @@ jobs:
           echo "DPkg::Options { \"--force-confdef\"; \"--force-confold\"; };" > /etc/apt/apt.conf.d/99force-conf
 
           apt-get update
-          apt-get install -y linux-image-amd64 live-boot live-config live-config-systemd systemd-sysv wget curl squashfs-tools
+          apt-get install -y linux-image-amd64 live-boot live-config live-config-systemd systemd-sysv initramfs-tools wget curl squashfs-tools
 
-          # Встановлення пакетів без kdeconnect та без kwallet
+          # Примусово додаємо live модулі в initramfs
+          mkdir -p /etc/initramfs-tools/conf.d
+          echo "MODULES=most" > /etc/initramfs-tools/conf.d/driver-policy
+          
+          cat << "EOF_MOD" >> /etc/initramfs-tools/modules
+          overlay
+          squashfs
+          loop
+          isofs
+          EOF_MOD
+
           apt-get install -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" \
             plasma-workspace plasma-desktop firefox-esr plasma-discover konsole dolphin kate fastfetch htop cmatrix tty-clock calamares calamares-settings-debian breeze-icon-theme plasma-nm plasma-pa sddm kinfocenter partitionmanager ark gwenview git sudo nano network-manager polkitd pkexec || true
-          
-          # Очищення від kwallet, якщо встановився по залежностях
+
           apt-get purge -y kwalletmanager pam-kwallet5 pam-kwallet6 || true
 
-          # Фікс конфігурації Calamares
+          # Оновлюємо initramfs з усіма необхідними драйверами
+          update-initramfs -u -k all
+
+          # Фікс конфігу Calamares
           mkdir -p /etc/calamares
           if [ -f /etc/calamares/settings.conf.debian ]; then
             cp -f /etc/calamares/settings.conf.debian /etc/calamares/settings.conf
           fi
-          
+
           apt-get install -f -y
           apt-get clean
           '
@@ -247,7 +259,6 @@ jobs:
           
           sudo mksquashfs chroot iso/live/filesystem.squashfs -comp xz -e proc sys dev run
           
-          # Конфігурація завантажувача без сплеш-екрана Debian
           cat << 'EOF' > iso/boot/grub/grub.cfg
           set default=0
           set timeout=3
