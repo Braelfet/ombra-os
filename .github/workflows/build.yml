@@ -64,11 +64,13 @@ jobs:
             sudo cp avatar.png chroot/var/lib/AccountsService/icons/ombra
             sudo cp avatar.png chroot/usr/share/pixmaps/ombra-logo.png
             sudo cp avatar.png chroot/usr/share/icons/hicolor/scalable/apps/ombra-logo.png
+            sudo cp avatar.png chroot/usr/share/icons/hicolor/scalable/apps/debian-logo.png
           elif [ -f "logob.png" ]; then
             sudo cp logob.png chroot/etc/skel/.face
             sudo cp logob.png chroot/var/lib/AccountsService/icons/ombra
             sudo cp logob.png chroot/usr/share/pixmaps/ombra-logo.png
             sudo cp logob.png chroot/usr/share/icons/hicolor/scalable/apps/ombra-logo.png
+            sudo cp logob.png chroot/usr/share/icons/hicolor/scalable/apps/debian-logo.png
           fi
 
       - name: Configure Ombra OS branding and Fastfetch
@@ -155,12 +157,14 @@ jobs:
           apt-get update
           apt-get install -y linux-image-amd64 live-boot live-config live-config-systemd systemd-sysv wget curl squashfs-tools
 
+          # Встановлення пакетів без kdeconnect та без kwallet
           apt-get install -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" \
-            plasma-workspace plasma-desktop firefox-esr plasma-discover konsole dolphin kate fastfetch htop cmatrix tty-clock calamares calamares-settings-debian breeze-icon-theme plasma-nm plasma-pa sddm kdeconnect avahi-daemon kinfocenter partitionmanager ark gwenview git sudo nano network-manager polkitd pkexec || true
+            plasma-workspace plasma-desktop firefox-esr plasma-discover konsole dolphin kate fastfetch htop cmatrix tty-clock calamares calamares-settings-debian breeze-icon-theme plasma-nm plasma-pa sddm kinfocenter partitionmanager ark gwenview git sudo nano network-manager polkitd pkexec || true
           
-          systemctl enable avahi-daemon || true
+          # Очищення від kwallet, якщо встановився по залежностях
+          apt-get purge -y kwalletmanager pam-kwallet5 pam-kwallet6 || true
 
-          # Виправлення для Calamares
+          # Фікс конфігурації Calamares
           mkdir -p /etc/calamares
           if [ -f /etc/calamares/settings.conf.debian ]; then
             cp -f /etc/calamares/settings.conf.debian /etc/calamares/settings.conf
@@ -243,11 +247,12 @@ jobs:
           
           sudo mksquashfs chroot iso/live/filesystem.squashfs -comp xz -e proc sys dev run
           
+          # Конфігурація завантажувача без сплеш-екрана Debian
           cat << 'EOF' > iso/boot/grub/grub.cfg
           set default=0
           set timeout=3
           menuentry "Ombra OS 1.0 (KDE Plasma 6)" {
-              linux /live/vmlinuz boot=live components quiet splash
+              linux /live/vmlinuz boot=live components quiet
               initrd /live/initrd.img
           }
           menuentry "Ombra OS 1.0 (Failsafe Mode)" {
