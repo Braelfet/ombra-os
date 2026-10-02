@@ -68,7 +68,7 @@ Flash the downloaded `.iso` file to a USB drive using one of the following tools
 1. Plug the bootable USB into your computer.
 2. Select the USB drive from your boot menu (F12, F11, or Esc depending on your motherboard).
 3. Select **Ombra OS (KDE Plasma, Live)** from the GRUB menu.
-4. The system will boot straight into the Live Desktop with user `ombra`.
+4. The system will boot straight into the Live Desktop with user `ombra`. (btw when it asks you for the password, enter `ombra`).
 
 ### 4. Install to Disk
 Double-click the **Install System (Calamares)** launcher on the desktop or main menu, follow the step-by-step setup wizard, and reboot into your fresh Ombra OS installation!
