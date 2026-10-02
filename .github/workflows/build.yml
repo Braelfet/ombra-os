@@ -24,11 +24,13 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y debootstrap squashfs-tools xorriso grub-pc-bin grub-efi-amd64-bin mtools debian-archive-keyring wget curl
+          sudo apt-get install -y debootstrap squashfs-tools xorriso 
+grub-pc-bin grub-efi-amd64-bin mtools debian-archive-keyring wget curl
 
       - name: Create chroot environment
         run: |
-          sudo debootstrap --no-check-gpg --arch=amd64 trixie chroot http://deb.debian.org/debian/
+          sudo debootstrap --no-check-gpg --arch=amd64 trixie chroot 
+http://deb.debian.org/debian/
 
       - name: Mount virtual filesystems for chroot
         run: |
@@ -39,7 +41,8 @@ jobs:
 
       - name: Copy repository assets to chroot
         run: |
-          sudo mkdir -p chroot/usr/share/wallpapers/Ombra/contents/images chroot/usr/share/pixmaps chroot/etc/skel chroot/var/lib/AccountsService/icons
+          sudo mkdir -p chroot/usr/share/wallpapers/Ombra/contents/images 
+chroot/usr/share/pixmaps chroot/etc/skel chroot/var/lib/AccountsService/icons
           
           if [ -f "ombra_color.txt" ]; then
             sudo cp ombra_color.txt chroot/usr/share/ombra_color.txt
@@ -48,11 +51,15 @@ jobs:
           fi
 
           if [ -f "wallpaper.png" ]; then
-            sudo cp wallpaper.png chroot/usr/share/wallpapers/Ombra/contents/images/1920x1080.png
-            sudo cp wallpaper.png chroot/usr/share/wallpapers/ombra_wallpaper.png
+            sudo cp wallpaper.png 
+chroot/usr/share/wallpapers/Ombra/contents/images/1920x1080.png
+            sudo cp wallpaper.png 
+chroot/usr/share/wallpapers/ombra_wallpaper.png
           elif [ -f "wallpaper.jpg" ]; then
-            sudo cp wallpaper.jpg chroot/usr/share/wallpapers/Ombra/contents/images/1920x1080.png
-            sudo cp wallpaper.jpg chroot/usr/share/wallpapers/ombra_wallpaper.png
+            sudo cp wallpaper.jpg 
+chroot/usr/share/wallpapers/Ombra/contents/images/1920x1080.png
+            sudo cp wallpaper.jpg 
+chroot/usr/share/wallpapers/ombra_wallpaper.png
           fi
 
           if [ -f "avatar.png" ]; then
@@ -68,7 +75,8 @@ jobs:
       - name: Configure Ombra OS branding and Fastfetch
         run: |
           sudo chroot chroot bash -ec '
-          mkdir -p /usr/share/ombra /etc/skel/.config/fastfetch /etc/fastfetch /root/.config/fastfetch
+          mkdir -p /usr/share/ombra /etc/skel/.config/fastfetch 
+/etc/fastfetch /root/.config/fastfetch
           
           cat << "EOF_OS" > /etc/os-release
           NAME="Ombra OS"
@@ -89,7 +97,8 @@ jobs:
 
           cat << "EOFF" > /etc/fastfetch/config.jsonc
           {
-            "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
+            "$schema": 
+"https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
             "logo": {
               "type": "file",
               "source": "/usr/share/ombra/ascii_logo.txt",
@@ -117,12 +126,15 @@ jobs:
               {"type": "host", "key": "Host", "keyColor": "magenta"},
               {"type": "kernel", "key": "Kernel", "keyColor": "magenta"},
               {"type": "uptime", "key": "Uptime", "keyColor": "magenta"},
-              {"type": "packages", "key": "Packages", "keyColor": "magenta"},
+              {"type": "packages", "key": "Packages", "keyColor": 
+"magenta"},
               {"type": "shell", "key": "Shell", "keyColor": "magenta"},
-              {"type": "display", "key": "Display", "keyColor": "magenta"},
+              {"type": "display", "key": "Display", "keyColor": 
+"magenta"},
               {"type": "de", "key": "DE", "keyColor": "magenta"},
               {"type": "wm", "key": "WM", "keyColor": "magenta"},
-              {"type": "terminal", "key": "Terminal", "keyColor": "magenta"},
+              {"type": "terminal", "key": "Terminal", "keyColor": 
+"magenta"},
               {"type": "cpu", "key": "CPU", "keyColor": "magenta"},
               {"type": "gpu", "key": "GPU", "keyColor": "magenta"},
               {"type": "memory", "key": "Memory", "keyColor": "magenta"},
@@ -132,8 +144,10 @@ jobs:
           }
           EOFF
 
-          cp /etc/fastfetch/config.jsonc /etc/skel/.config/fastfetch/config.jsonc
-          cp /etc/fastfetch/config.jsonc /root/.config/fastfetch/config.jsonc
+          cp /etc/fastfetch/config.jsonc 
+/etc/skel/.config/fastfetch/config.jsonc
+          cp /etc/fastfetch/config.jsonc 
+/root/.config/fastfetch/config.jsonc
 
           echo "fastfetch" >> /etc/skel/.bashrc
           echo "fastfetch" >> /root/.bashrc
@@ -146,27 +160,34 @@ jobs:
           export DEBIAN_PRIORITY=critical
 
           mkdir -p /etc/apt/apt.conf.d
-          echo "DPkg::Options { \"--force-confdef\"; \"--force-confold\"; };" > /etc/apt/apt.conf.d/99force-conf
+          echo "DPkg::Options { \"--force-confdef\"; \"--force-confold\"; 
+};" > /etc/apt/apt.conf.d/99force-conf
 
           apt-get update
-          apt-get install -y linux-image-amd64 live-boot systemd-sysv wget curl
+          apt-get install -y linux-image-amd64 live-boot systemd-sysv 
+wget curl
           
-          apt-get install -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" \
-            plasma-workspace plasma-desktop firefox-esr plasma-discover konsole dolphin kate fastfetch htop cmatrix tty-clock calamares calamares-settings-debian breeze-icon-theme plasma-nm plasma-pa sddm kdeconnect partitionmanager ark gwenview git sudo nano network-manager polkitd pkexec || true
+          apt-get install -y -o Dpkg::Options::="--force-confdef" -o 
+Dpkg::Options::="--force-confold" \
+            plasma-workspace plasma-desktop firefox-esr plasma-discover 
+konsole dolphin kate fastfetch htop cmatrix tty-clock calamares calamares-settings-debian breeze-icon-theme plasma-nm plasma-pa sddm kdeconnect partitionmanager ark gwenview git sudo nano network-manager polkitd pkexec || true
           
           apt-get install -f -y
           apt-get clean
           '
 
-      - name: Apply Breeze Dark theme, Passwordless Permissions & Desktop Script
+      - name: Apply Breeze Dark theme, Passwordless Permissions & Desktop 
+Script
         run: |
           sudo chroot chroot bash -ec '
-          mkdir -p /etc/skel/.config /etc/skel/.config/autostart /usr/local/bin /etc/polkit-1/rules.d /etc/sudoers.d /etc/skel/Desktop
+          mkdir -p /etc/skel/.config /etc/skel/.config/autostart 
+/usr/local/bin /etc/polkit-1/rules.d /etc/sudoers.d /etc/skel/Desktop
           
           echo "ALL ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/99-nopasswd
           chmod 0440 /etc/sudoers.d/99-nopasswd
 
-          cat << "EOF_POLKIT" > /etc/polkit-1/rules.d/49-nopasswd_global.rules
+          cat << "EOF_POLKIT" > 
+/etc/polkit-1/rules.d/49-nopasswd_global.rules
           polkit.addRule(function(action, subject) {
               return polkit.Result.YES;
           });
@@ -192,7 +213,8 @@ jobs:
           systemd-resolved=true
           EOF_NM
 
-          cat << "EOF_CALAMARES" > /etc/skel/Desktop/install-ombra.desktop
+          cat << "EOF_CALAMARES" > 
+/etc/skel/Desktop/install-ombra.desktop
           [Desktop Entry]
           Type=Application
           Version=1.0
@@ -209,7 +231,8 @@ jobs:
           cat << "EOF_SCRIPT" > /usr/local/bin/ombra-init-desktop
           #!/bin/bash
           sleep 2
-          dbus-send --session --dest=org.kde.plasmashell --type=method_call /PlasmaShell org.kde.PlasmaShell.evaluateScript "string:
+          dbus-send --session --dest=org.kde.plasmashell 
+--type=method_call /PlasmaShell org.kde.PlasmaShell.evaluateScript "string:
           if (panels().length === 0) {
               var panel = new Panel();
               panel.location = 'bottom';
@@ -225,15 +248,18 @@ jobs:
           for (var i=0; i<Desktops.length; i++) {
               var d = Desktops[i];
               d.wallpaperPlugin = 'org.kde.image';
-              d.currentConfigGroup = Array('Wallpaper', 'org.kde.image', 'General');
-              d.writeConfig('Image', 'file:///usr/share/wallpapers/ombra_wallpaper.png');
+              d.currentConfigGroup = Array('Wallpaper', 'org.kde.image', 
+'General');
+              d.writeConfig('Image', 
+'file:///usr/share/wallpapers/ombra_wallpaper.png');
           }
           "
           EOF_SCRIPT
 
           chmod +x /usr/local/bin/ombra-init-desktop
 
-          cat << "EOF_AUTOSTART" > /etc/skel/.config/autostart/ombra-init.desktop
+          cat << "EOF_AUTOSTART" > 
+/etc/skel/.config/autostart/ombra-init.desktop
           [Desktop Entry]
           Type=Application
           Name=Ombra Desktop Setup
@@ -287,7 +313,8 @@ jobs:
           sudo cp "$VMLINUZ" iso/live/vmlinuz
           sudo cp "$INITRD" iso/live/initrd.img
           
-          sudo mksquashfs chroot iso/live/filesystem.squashfs -comp xz -e proc sys dev run
+          sudo mksquashfs chroot iso/live/filesystem.squashfs -comp xz -e 
+proc sys dev run
           
           cat << 'EOF' > iso/boot/grub/grub.cfg
           set default=0
@@ -311,4 +338,5 @@ jobs:
         with:
           name: Ombra-OS-ISO
           path: ombra-os-trixie-kde.iso
+          compression-level: 0
 
