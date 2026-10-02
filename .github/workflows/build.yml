@@ -39,7 +39,11 @@ jobs:
 
       - name: Copy repository assets to chroot
         run: |
-          sudo mkdir -p chroot/usr/share/wallpapers/Ombra/contents/images chroot/usr/share/pixmaps chroot/etc/skel chroot/var/lib/AccountsService/icons
+          sudo mkdir -p chroot/usr/share/wallpapers/Ombra/contents/images \
+                         chroot/usr/share/pixmaps \
+                         chroot/usr/share/icons/hicolor/scalable/apps \
+                         chroot/etc/skel \
+                         chroot/var/lib/AccountsService/icons
           
           if [ -f "ombra_color.txt" ]; then
             sudo cp ombra_color.txt chroot/usr/share/ombra_color.txt
@@ -59,10 +63,12 @@ jobs:
             sudo cp avatar.png chroot/etc/skel/.face
             sudo cp avatar.png chroot/var/lib/AccountsService/icons/ombra
             sudo cp avatar.png chroot/usr/share/pixmaps/ombra-logo.png
+            sudo cp avatar.png chroot/usr/share/icons/hicolor/scalable/apps/ombra-logo.png
           elif [ -f "logob.png" ]; then
             sudo cp logob.png chroot/etc/skel/.face
             sudo cp logob.png chroot/var/lib/AccountsService/icons/ombra
             sudo cp logob.png chroot/usr/share/pixmaps/ombra-logo.png
+            sudo cp logob.png chroot/usr/share/icons/hicolor/scalable/apps/ombra-logo.png
           fi
 
       - name: Configure Ombra OS branding and Fastfetch
@@ -78,6 +84,7 @@ jobs:
           PRETTY_NAME="Ombra OS 1.0"
           VERSION_ID="1.0"
           HOME_URL="https://github.com/Braelfet/ombra-os"
+          LOGO=ombra-logo
           EOF_OS
 
           echo -e "Ombra OS 1.0 \n \l" > /etc/issue
@@ -149,10 +156,18 @@ jobs:
           echo "DPkg::Options { \"--force-confdef\"; \"--force-confold\"; };" > /etc/apt/apt.conf.d/99force-conf
 
           apt-get update
-          apt-get install -y linux-image-amd64 live-boot systemd-sysv wget curl
+          apt-get install -y linux-image-amd64 live-boot live-config live-config-systemd systemd-sysv wget curl
           
           apt-get install -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" \
             plasma-workspace plasma-desktop firefox-esr plasma-discover konsole dolphin kate fastfetch htop cmatrix tty-clock calamares calamares-settings-debian breeze-icon-theme plasma-nm plasma-pa sddm kdeconnect partitionmanager ark gwenview git sudo nano network-manager polkitd pkexec || true
+          
+          # Оновлюємо initramfs для коректного завантаження Live ISO
+          update-initramfs -u -k all
+
+          # Фікс конфігурації Calamares
+          if [ ! -f /etc/calamares/settings.conf ] && [ -f /etc/calamares/settings.conf.debian ]; then
+            cp /etc/calamares/settings.conf.debian /etc/calamares/settings.conf
+          fi
           
           apt-get install -f -y
           apt-get clean
@@ -281,8 +296,8 @@ jobs:
         run: |
           mkdir -p iso/live iso/boot/grub
           
-          VMLINUZ=$(ls chroot/boot/vmlinuz-* | head -n 1)
-          INITRD=$(ls chroot/boot/initrd.img-* | head -n 1)
+          VMLINUZ=$(ls chroot/boot/vmlinuz-* | sort -V | tail -n 1)
+          INITRD=$(ls chroot/boot/initrd.img-* | sort -V | tail -n 1)
           
           sudo cp "$VMLINUZ" iso/live/vmlinuz
           sudo cp "$INITRD" iso/live/initrd.img
@@ -293,11 +308,11 @@ jobs:
           set default=0
           set timeout=3
           menuentry "Ombra OS 1.0 (KDE Plasma 6)" {
-              linux /live/vmlinuz boot=live quiet
+              linux /live/vmlinuz boot=live components quiet splash
               initrd /live/initrd.img
           }
           menuentry "Ombra OS 1.0 (Failsafe Mode)" {
-              linux /live/vmlinuz boot=live nomodeset
+              linux /live/vmlinuz boot=live components nomodeset
               initrd /live/initrd.img
           }
           EOF
