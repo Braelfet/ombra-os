@@ -58,7 +58,7 @@ jobs:
           sudo chroot chroot bash -ec '
           mkdir -p /usr/share/ombra /etc/skel/.config/fastfetch /etc/fastfetch /root/.config/fastfetch /usr/share/icons/hicolor/scalable/apps /usr/share/icons/hicolor/48x48/apps /usr/lib
           
-          # Очищення та запис системного os-release
+          # Очищення та запис системного os-release (без конфліктів symlink)
           rm -f /etc/os-release /usr/lib/os-release
 
           cat << "EOF_OS" > /usr/lib/os-release
@@ -77,7 +77,7 @@ jobs:
           echo -e "Ombra OS 1.0 \n \l" > /etc/issue
           echo "Ombra OS 1.0" > /etc/issue.net
 
-          # Підміна системних логотипів Debian
+          # Заміна системних логотипів Debian на Ombra OS
           if [ -f /etc/skel/.face ]; then
             cp /etc/skel/.face /usr/share/pixmaps/debian-logo.png
             cp /etc/skel/.face /usr/share/pixmaps/ombra-logo.png
@@ -151,8 +151,6 @@ jobs:
 
           mkdir -p /etc/apt/apt.conf.d
           echo "DPkg::Options { \"--force-confdef\"; \"--force-confold\"; };" > /etc/apt/apt.conf.d/99force-conf
-          echo "APT::Install-Recommends \"0\";" > /etc/apt/apt.conf.d/99no-recommends
-          echo "APT::Install-Suggests \"0\";" >> /etc/apt/apt.conf.d/99no-recommends
 
           sed -i "s/main/main contrib non-free non-free-firmware/g" /etc/apt/sources.list || true
 
@@ -168,16 +166,13 @@ jobs:
           echo "usb_storage" >> /etc/initramfs-tools/modules
           update-initramfs -u -k all
 
-          # Встановлення софту
-          apt-get install -y --no-install-recommends -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" \
+          # Встановлення софту зі стандартними рекомендованими пакунками (з KDE Connect та KWallet)
+          apt-get install -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" \
             plasma-workspace plasma-desktop firefox-esr plasma-discover konsole dolphin kate fastfetch htop cmatrix tty-clock \
             calamares calamares-settings-debian breeze-icon-theme plasma-nm plasma-pa sddm partitionmanager ark gwenview curl git sudo nano \
             network-manager polkitd pkexec bluez bluedevil usbutils dosfstools exfatprogs ntfs-3g firmware-linux-free \
-            qml-module-qtquick2 qml-module-qtquick-controls2 qml-module-qtquick-layouts || true
+            qml-module-qtquick2 qml-module-qtquick-controls2 qml-module-qtquick-layouts kdeconnect || true
 
-          # Очищення від KWallet та KDE Connect
-          apt-get purge -y kwalletmanager kwalletmanager5 pam-kwallet-common libpam-kwallet5 libpam-kwallet6 kdeconnect indicator-kdeconnect || true
-          apt-get autoremove -y --purge
           apt-get install -f -y
           apt-get clean
           '
@@ -269,12 +264,6 @@ jobs:
           LookAndFeelPackage=org.kde.breezedark.desktop
           EOF_KDE
 
-          cat << "EOF_KWALLET" > /etc/skel/.config/kwalletrc
-          [Wallet]
-          Enabled=false
-          First Use=false
-          EOF_KWALLET
-
           mkdir -p /etc/NetworkManager/conf.d
           cat << "EOF_NM" > /etc/NetworkManager/conf.d/no-kwallet.conf
           [main]
@@ -339,7 +328,7 @@ jobs:
           Current=breeze
           EOF_SDDM
 
-          # Додаткове налаштування для live-config
+          # Налаштування live-config
           mkdir -p /etc/live/config.conf.d
           echo "LIVE_USERNAME=ombra" > /etc/live/config.conf.d/ombra.conf
           '
