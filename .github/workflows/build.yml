@@ -58,7 +58,7 @@ jobs:
           sudo chroot chroot bash -ec '
           mkdir -p /usr/share/ombra /etc/skel/.config/fastfetch /etc/fastfetch /root/.config/fastfetch /usr/share/icons/hicolor/scalable/apps /usr/share/icons/hicolor/48x48/apps /usr/lib
           
-          # Clean and set system os-release in English
+          # Очищення та запис os-release для KDE Info Center
           rm -f /etc/os-release /usr/lib/os-release
 
           cat << "EOF_OS" > /usr/lib/os-release
@@ -76,9 +76,9 @@ jobs:
 
           echo -e "Ombra OS 1.0 \n \l" > /etc/issue
           echo "Ombra OS 1.0" > /etc/issue.net
-          echo "Ombra OS 1.0" > /etc/debian_version
+          echo "1.0" > /etc/debian_version
 
-          # Replace system Debian logos with Ombra OS logo
+          # Заміна системних логотипів Debian на Ombra OS у всіх темах
           if [ -f /etc/skel/.face ]; then
             mkdir -p /usr/share/desktop-base/common/images
             cp /etc/skel/.face /usr/share/pixmaps/debian-logo.png
@@ -87,8 +87,10 @@ jobs:
             cp /etc/skel/.face /usr/share/pixmaps/ombra.png
             cp /etc/skel/.face /usr/share/icons/hicolor/scalable/apps/ombra.png
             cp /etc/skel/.face /usr/share/icons/hicolor/scalable/apps/debian-logo.png
+            cp /etc/skel/.face /usr/share/icons/hicolor/scalable/apps/distro-debian.svg
             cp /etc/skel/.face /usr/share/icons/hicolor/48x48/apps/ombra.png
             cp /etc/skel/.face /usr/share/icons/hicolor/48x48/apps/debian-logo.png
+            cp /etc/skel/.face /usr/share/icons/hicolor/48x48/apps/distro-debian.png
             cp /etc/skel/.face /usr/share/desktop-base/common/images/login-background.svg
           fi
 
@@ -170,23 +172,23 @@ jobs:
           echo "usb_storage" >> /etc/initramfs-tools/modules
           update-initramfs -u -k all
 
-          # Install packages
+          # Встановлення софту
           apt-get install -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" \
             plasma-workspace plasma-desktop firefox-esr plasma-discover konsole dolphin kate fastfetch htop cmatrix tty-clock \
             calamares calamares-settings-debian breeze-icon-theme plasma-nm plasma-pa sddm partitionmanager ark gwenview curl git sudo nano \
             network-manager polkitd pkexec bluez bluedevil usbutils dosfstools exfatprogs ntfs-3g firmware-linux-free \
             qml-module-qtquick2 qml-module-qtquick-controls2 qml-module-qtquick-layouts kdeconnect || true
 
-          # Purge conflicting Debian desktop branding
+          # Видалення брендингу Debian
           apt-get purge -y desktop-base plymouth-theme-debian-spinner || true
           apt-get install -f -y
           apt-get clean
           '
 
-      - name: Configure Calamares Installer Fix & English Shortcuts
+      - name: Configure Calamares Branding & Modify Existing Shortcuts
         run: |
           sudo chroot chroot bash -ec '
-          mkdir -p /etc/calamares /etc/calamares/branding/ombra /usr/share/applications /etc/skel/Desktop
+          mkdir -p /etc/calamares /etc/calamares/branding/ombra /etc/skel/Desktop
 
           if [ -f /etc/calamares/settings.conf.bak ]; then
             cp /etc/calamares/settings.conf.bak /etc/calamares/settings.conf
@@ -248,24 +250,17 @@ jobs:
           }
           EOF_QML
 
-          # Create "Install Ombra OS 1.0" shortcut (English)
-          cat << "EOF_DESKTOP" > /usr/share/applications/install-ombra.desktop
-          [Desktop Entry]
-          Type=Application
-          Version=1.0
-          Name=Install Ombra OS 1.0
-          GenericName=System Installer
-          Comment=Install Ombra OS to your disk
-          Exec=calamares
-          Icon=ombra-logo
-          Terminal=false
-          Categories=System;
-          EOF_DESKTOP
+          # Модифікація існуючих .desktop файлів Calamares без створення нових приложеній
+          for f in /usr/share/applications/calamares.desktop /usr/share/applications/install-debian.desktop /usr/share/applications/install-media.desktop; do
+            if [ -f "$f" ]; then
+              sed -i "s/Name=.*/Name=Install Ombra OS 1.0/g" "$f"
+              sed -i "s/Comment=.*/Comment=Install Ombra OS 1.0 to your hard drive/g" "$f"
+              sed -i "s/GenericName=.*/GenericName=Install Ombra OS 1.0/g" "$f"
+              cp "$f" /etc/skel/Desktop/ || true
+            fi
+          done
 
-          rm -f /usr/share/applications/calamares.desktop /usr/share/applications/install-debian.desktop || true
-          cp /usr/share/applications/install-ombra.desktop /etc/skel/Desktop/ || true
-
-          # Create "This PC" shortcut (Windows style)
+          # Ярлики "This PC", "Home", "Trash" для робочого столу
           cat << "EOF_THIS_PC" > /etc/skel/Desktop/this-pc.desktop
           [Desktop Entry]
           Type=Application
@@ -277,7 +272,6 @@ jobs:
           Categories=System;
           EOF_THIS_PC
 
-          # Create "Home" shortcut
           cat << "EOF_HOME" > /etc/skel/Desktop/home.desktop
           [Desktop Entry]
           Type=Application
@@ -289,7 +283,6 @@ jobs:
           Categories=System;
           EOF_HOME
 
-          # Create "Trash" shortcut
           cat << "EOF_TRASH" > /etc/skel/Desktop/trash.desktop
           [Desktop Entry]
           Type=Application
@@ -301,7 +294,7 @@ jobs:
           Categories=System;
           EOF_TRASH
 
-          chmod +x /etc/skel/Desktop/*.desktop
+          chmod +x /etc/skel/Desktop/*.desktop || true
           '
 
       - name: Apply Breeze Dark theme, Passwordless Permissions & Desktop Script
@@ -373,7 +366,7 @@ jobs:
           
           if [ -d /etc/skel/Desktop ]; then
             cp -r /etc/skel/Desktop/* /home/ombra/Desktop/ || true
-            chmod +x /home/ombra/Desktop/*.desktop
+            chmod +x /home/ombra/Desktop/*.desktop || true
           fi
 
           if [ -f /etc/skel/.face ]; then
