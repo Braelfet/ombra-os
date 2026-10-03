@@ -58,7 +58,7 @@ jobs:
           sudo chroot chroot bash -ec '
           mkdir -p /usr/share/ombra /etc/skel/.config/fastfetch /etc/fastfetch /root/.config/fastfetch /usr/share/icons/hicolor/scalable/apps /usr/share/icons/hicolor/48x48/apps /usr/lib
           
-          # Очищення та запис системного os-release (без конфліктів symlink)
+          # Clean and set system os-release in English
           rm -f /etc/os-release /usr/lib/os-release
 
           cat << "EOF_OS" > /usr/lib/os-release
@@ -76,16 +76,20 @@ jobs:
 
           echo -e "Ombra OS 1.0 \n \l" > /etc/issue
           echo "Ombra OS 1.0" > /etc/issue.net
+          echo "Ombra OS 1.0" > /etc/debian_version
 
-          # Заміна системних логотипів Debian на Ombra OS
+          # Replace system Debian logos with Ombra OS logo
           if [ -f /etc/skel/.face ]; then
+            mkdir -p /usr/share/desktop-base/common/images
             cp /etc/skel/.face /usr/share/pixmaps/debian-logo.png
+            cp /etc/skel/.face /usr/share/pixmaps/debian-logo.svg
             cp /etc/skel/.face /usr/share/pixmaps/ombra-logo.png
             cp /etc/skel/.face /usr/share/pixmaps/ombra.png
             cp /etc/skel/.face /usr/share/icons/hicolor/scalable/apps/ombra.png
             cp /etc/skel/.face /usr/share/icons/hicolor/scalable/apps/debian-logo.png
             cp /etc/skel/.face /usr/share/icons/hicolor/48x48/apps/ombra.png
             cp /etc/skel/.face /usr/share/icons/hicolor/48x48/apps/debian-logo.png
+            cp /etc/skel/.face /usr/share/desktop-base/common/images/login-background.svg
           fi
 
           if [ -f /usr/share/ombra_color.txt ]; then
@@ -166,21 +170,23 @@ jobs:
           echo "usb_storage" >> /etc/initramfs-tools/modules
           update-initramfs -u -k all
 
-          # Встановлення софту зі стандартними рекомендованими пакунками (з KDE Connect та KWallet)
+          # Install packages
           apt-get install -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" \
             plasma-workspace plasma-desktop firefox-esr plasma-discover konsole dolphin kate fastfetch htop cmatrix tty-clock \
             calamares calamares-settings-debian breeze-icon-theme plasma-nm plasma-pa sddm partitionmanager ark gwenview curl git sudo nano \
             network-manager polkitd pkexec bluez bluedevil usbutils dosfstools exfatprogs ntfs-3g firmware-linux-free \
             qml-module-qtquick2 qml-module-qtquick-controls2 qml-module-qtquick-layouts kdeconnect || true
 
+          # Purge conflicting Debian desktop branding
+          apt-get purge -y desktop-base plymouth-theme-debian-spinner || true
           apt-get install -f -y
           apt-get clean
           '
 
-      - name: Configure Calamares Installer Fix & Branding
+      - name: Configure Calamares Installer Fix & English Shortcuts
         run: |
           sudo chroot chroot bash -ec '
-          mkdir -p /etc/calamares /etc/calamares/branding/ombra
+          mkdir -p /etc/calamares /etc/calamares/branding/ombra /usr/share/applications /etc/skel/Desktop
 
           if [ -f /etc/calamares/settings.conf.bak ]; then
             cp /etc/calamares/settings.conf.bak /etc/calamares/settings.conf
@@ -241,6 +247,61 @@ jobs:
               }
           }
           EOF_QML
+
+          # Create "Install Ombra OS 1.0" shortcut (English)
+          cat << "EOF_DESKTOP" > /usr/share/applications/install-ombra.desktop
+          [Desktop Entry]
+          Type=Application
+          Version=1.0
+          Name=Install Ombra OS 1.0
+          GenericName=System Installer
+          Comment=Install Ombra OS to your disk
+          Exec=calamares
+          Icon=ombra-logo
+          Terminal=false
+          Categories=System;
+          EOF_DESKTOP
+
+          rm -f /usr/share/applications/calamares.desktop /usr/share/applications/install-debian.desktop || true
+          cp /usr/share/applications/install-ombra.desktop /etc/skel/Desktop/ || true
+
+          # Create "This PC" shortcut (Windows style)
+          cat << "EOF_THIS_PC" > /etc/skel/Desktop/this-pc.desktop
+          [Desktop Entry]
+          Type=Application
+          Name=This PC
+          Comment=Open Computer Overview
+          Exec=dolphin root:/
+          Icon=computer
+          Terminal=false
+          Categories=System;
+          EOF_THIS_PC
+
+          # Create "Home" shortcut
+          cat << "EOF_HOME" > /etc/skel/Desktop/home.desktop
+          [Desktop Entry]
+          Type=Application
+          Name=Home
+          Comment=Open User Home Folder
+          Exec=dolphin %u
+          Icon=user-home
+          Terminal=false
+          Categories=System;
+          EOF_HOME
+
+          # Create "Trash" shortcut
+          cat << "EOF_TRASH" > /etc/skel/Desktop/trash.desktop
+          [Desktop Entry]
+          Type=Application
+          Name=Trash
+          Comment=Open Trash Can
+          Exec=dolphin trash:/
+          Icon=user-trash
+          Terminal=false
+          Categories=System;
+          EOF_TRASH
+
+          chmod +x /etc/skel/Desktop/*.desktop
           '
 
       - name: Apply Breeze Dark theme, Passwordless Permissions & Desktop Script
@@ -306,17 +367,22 @@ jobs:
           echo "ombra:ombra" | chpasswd
           usermod -aG sudo,audio,video,plugdev,netdev ombra || true
           
-          mkdir -p /home/ombra/.config
+          mkdir -p /home/ombra/.config /home/ombra/Desktop
           cp -r /etc/skel/.config/* /home/ombra/.config/ || true
           cp /etc/skel/.bashrc /home/ombra/.bashrc || true
           
+          if [ -d /etc/skel/Desktop ]; then
+            cp -r /etc/skel/Desktop/* /home/ombra/Desktop/ || true
+            chmod +x /home/ombra/Desktop/*.desktop
+          fi
+
           if [ -f /etc/skel/.face ]; then
             cp /etc/skel/.face /home/ombra/.face || true
           fi
           
           chown -R ombra:ombra /home/ombra
 
-          # Гарантований автовхід для SDDM
+          # SDDM Autologin
           mkdir -p /etc/sddm.conf.d
           cat << "EOF_SDDM" > /etc/sddm.conf.d/autologin.conf
           [Autologin]
@@ -328,7 +394,7 @@ jobs:
           Current=breeze
           EOF_SDDM
 
-          # Налаштування live-config
+          # live-config username
           mkdir -p /etc/live/config.conf.d
           echo "LIVE_USERNAME=ombra" > /etc/live/config.conf.d/ombra.conf
           '
