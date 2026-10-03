@@ -58,8 +58,10 @@ jobs:
           sudo chroot chroot bash -ec '
           mkdir -p /usr/share/ombra /etc/skel/.config/fastfetch /etc/fastfetch /root/.config/fastfetch /usr/share/icons/hicolor/scalable/apps /usr/share/icons/hicolor/48x48/apps /usr/lib
           
-          # Запис правильного os-release у два місця (/etc та /usr/lib)
-          cat << "EOF_OS" > /etc/os-release
+          # Видаляємо можливий symlink і записуємо чистий os-release
+          rm -f /etc/os-release /usr/lib/os-release
+
+          cat << "EOF_OS" > /usr/lib/os-release
           NAME="Ombra OS"
           VERSION="1.0"
           ID=ombra
@@ -70,7 +72,7 @@ jobs:
           LOGO="ombra"
           EOF_OS
 
-          cp /etc/os-release /usr/lib/os-release
+          ln -sf /usr/lib/os-release /etc/os-release
 
           echo -e "Ombra OS 1.0 \n \l" > /etc/issue
           echo "Ombra OS 1.0" > /etc/issue.net
@@ -166,7 +168,7 @@ jobs:
           echo "usb_storage" >> /etc/initramfs-tools/modules
           update-initramfs -u -k all
 
-          # Встановлення KDE Plasma, Calamares та його базових модулів
+          # Встановлення KDE Plasma, Calamares та його модулів
           apt-get install -y --no-install-recommends -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" \
             plasma-workspace plasma-desktop firefox-esr plasma-discover konsole dolphin kate fastfetch htop cmatrix tty-clock \
             calamares calamares-settings-debian breeze-icon-theme plasma-nm plasma-pa sddm partitionmanager ark gwenview curl git sudo nano \
@@ -185,14 +187,14 @@ jobs:
           sudo chroot chroot bash -ec '
           mkdir -p /etc/calamares /etc/calamares/branding/ombra
 
-          # Повертаємо стандартну робочу конфігурацію модулів Calamares з Debian
+          # Повертаємо дефолтну конфігурацію модулів з дебіанівського пакету
           if [ -f /etc/calamares/settings.conf.bak ]; then
             cp /etc/calamares/settings.conf.bak /etc/calamares/settings.conf
-          elif [ -d /usr/share/calamares ]; then
-            cp -r /usr/share/calamares/settings.conf /etc/calamares/settings.conf || true
+          elif [ -f /usr/share/calamares/settings.conf ]; then
+            cp /usr/share/calamares/settings.conf /etc/calamares/settings.conf || true
           fi
 
-          # Налаштовуємо брендинг в settings.conf
+          # Вказуємо використовувати брендинг ombra
           sed -i "s/branding: .*/branding: ombra/" /etc/calamares/settings.conf || true
 
           # Конфігурація брендингу Ombra OS
@@ -317,7 +319,6 @@ jobs:
           OnlyShowIn=KDE;
           EOF_AUTOSTART
 
-          # Оновлення кєшів іконок
           touch /usr/share/icons/hicolor
           '
 
