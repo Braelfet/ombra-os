@@ -56,9 +56,9 @@ jobs:
       - name: Configure Ombra OS branding and Fastfetch
         run: |
           sudo chroot chroot bash -ec '
-          mkdir -p /usr/share/ombra /etc/skel/.config/fastfetch /etc/fastfetch /root/.config/fastfetch /usr/share/icons/hicolor/scalable/apps /usr/share/icons/hicolor/48x48/apps
+          mkdir -p /usr/share/ombra /etc/skel/.config/fastfetch /etc/fastfetch /root/.config/fastfetch /usr/share/icons/hicolor/scalable/apps /usr/share/icons/hicolor/48x48/apps /usr/lib
           
-          # Системний брендинг для KDE Info Center та системних налаштувань
+          # Запис правильного os-release у два місця (/etc та /usr/lib)
           cat << "EOF_OS" > /etc/os-release
           NAME="Ombra OS"
           VERSION="1.0"
@@ -70,10 +70,12 @@ jobs:
           LOGO="ombra"
           EOF_OS
 
+          cp /etc/os-release /usr/lib/os-release
+
           echo -e "Ombra OS 1.0 \n \l" > /etc/issue
           echo "Ombra OS 1.0" > /etc/issue.net
 
-          # Жорстка заміна всіх варіантів системного логотипу
+          # Заміна системних логотипів
           if [ -f /etc/skel/.face ]; then
             cp /etc/skel/.face /usr/share/pixmaps/debian-logo.png
             cp /etc/skel/.face /usr/share/pixmaps/ombra-logo.png
@@ -139,7 +141,7 @@ jobs:
           echo "fastfetch" >> /root/.bashrc
           '
 
-      - name: Install Pure KDE Plasma 6, Firefox, USB & Bluetooth Support
+      - name: Install Pure KDE Plasma 6, Firefox, Calamares Dependencies & System Tools
         run: |
           sudo chroot chroot bash -ec '
           export DEBIAN_FRONTEND=noninteractive
@@ -147,7 +149,9 @@ jobs:
 
           mkdir -p /etc/apt/apt.conf.d
           echo "DPkg::Options { \"--force-confdef\"; \"--force-confold\"; };" > /etc/apt/apt.conf.d/99force-conf
-          
+          echo "APT::Install-Recommends \"0\";" > /etc/apt/apt.conf.d/99no-recommends
+          echo "APT::Install-Suggests \"0\";" >> /etc/apt/apt.conf.d/99no-recommends
+
           sed -i "s/main/main contrib non-free non-free-firmware/g" /etc/apt/sources.list || true
 
           apt-get update
@@ -162,11 +166,16 @@ jobs:
           echo "usb_storage" >> /etc/initramfs-tools/modules
           update-initramfs -u -k all
 
-          apt-get install -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" \
-            plasma-workspace plasma-desktop firefox-esr plasma-discover konsole dolphin kate fastfetch htop cmatrix tty-clock calamares breeze-icon-theme plasma-nm plasma-pa sddm partitionmanager ark gwenview curl git sudo nano network-manager polkitd pkexec \
-            bluez bluedevil usbutils dosfstools exfatprogs ntfs-3g firmware-linux-free || true
+          # Встановлення KDE Plasma, Calamares та його базових модулів
+          apt-get install -y --no-install-recommends -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" \
+            plasma-workspace plasma-desktop firefox-esr plasma-discover konsole dolphin kate fastfetch htop cmatrix tty-clock \
+            calamares calamares-settings-debian breeze-icon-theme plasma-nm plasma-pa sddm partitionmanager ark gwenview curl git sudo nano \
+            network-manager polkitd pkexec bluez bluedevil usbutils dosfstools exfatprogs ntfs-3g firmware-linux-free \
+            qml-module-qtquick2 qml-module-qtquick-controls2 qml-module-qtquick-layouts || true
 
-          apt-get purge -y kwalletmanager kdeconnect kwalletmanager5 || true
+          # Видалення KWallet та KDE Connect
+          apt-get purge -y kwalletmanager kwalletmanager5 pam-kwallet-common libpam-kwallet5 libpam-kwallet6 kdeconnect indicator-kdeconnect || true
+          apt-get autoremove -y --purge
           apt-get install -f -y
           apt-get clean
           '
@@ -176,51 +185,17 @@ jobs:
           sudo chroot chroot bash -ec '
           mkdir -p /etc/calamares /etc/calamares/branding/ombra
 
-          cat << "EOF_CAL_SET" > /etc/calamares/settings.conf
-          sequence:
-            - show:
-                - welcome
-                - locale
-                - keyboard
-                - partition
-                - users
-                - summary
-            - exec:
-                - partition
-                - mount
-                - unpackfs
-                - machineid
-                - fstab
-                - locale
-                - keyboard
-                - localecfg
-                - networkcfg
-                - hwclock
-                - services-systemd
-                - displaymanager
-                - packages
-                - grubcfg
-                - bootloader
-                - umount
-            - show:
-                - finished
+          # Повертаємо стандартну робочу конфігурацію модулів Calamares з Debian
+          if [ -f /etc/calamares/settings.conf.bak ]; then
+            cp /etc/calamares/settings.conf.bak /etc/calamares/settings.conf
+          elif [ -d /usr/share/calamares ]; then
+            cp -r /usr/share/calamares/settings.conf /etc/calamares/settings.conf || true
+          fi
 
-          instances:
-            - id:       ombra
-              module:   unpackfs
-              config:   unpackfs.conf
+          # Налаштовуємо брендинг в settings.conf
+          sed -i "s/branding: .*/branding: ombra/" /etc/calamares/settings.conf || true
 
-          branding: ombra
-          prompt-at-end: true
-          dont-chroot: false
-          oem-setup: false
-          disable-cancel: false
-          disable-cancel-during-exec: false
-          hide-back-and-next-during-exec: false
-          quit-at-end: false
-          EOF_CAL_SET
-
-          # Конфігурація брендингу Calamares
+          # Конфігурація брендингу Ombra OS
           cat << "EOF_CAL_BRAND" > /etc/calamares/branding/ombra/branding.desc
           ---
           componentName:  ombra
@@ -250,7 +225,7 @@ jobs:
             sidebarTextHighlight: "#89b4fa"
           EOF_CAL_BRAND
 
-          # Створення фіктивного QML файлу для слайдшоу, щоб Calamares не вилітав
+          # Створення QML слайдшоу
           cat << "EOF_QML" > /etc/calamares/branding/ombra/show.qml
           import QtQuick 2.0;
           import calamares.slideshow 1.0;
@@ -341,6 +316,9 @@ jobs:
           Exec=/usr/local/bin/ombra-init-desktop
           OnlyShowIn=KDE;
           EOF_AUTOSTART
+
+          # Оновлення кєшів іконок
+          touch /usr/share/icons/hicolor
           '
 
       - name: Configure Live User (ombra) and SDDM Autologin
