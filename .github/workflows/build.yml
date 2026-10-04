@@ -45,27 +45,71 @@ jobs:
             sudo cp wallpaper.jpg chroot/usr/share/wallpapers/Ombra/contents/images/1920x1080.png
             sudo cp wallpaper.jpg chroot/usr/share/wallpapers/ombra_wallpaper.png
           fi
-          if [ -f "avatar.png" ]; then
-            sudo cp avatar.png chroot/etc/skel/.face
-            sudo cp avatar.png chroot/var/lib/AccountsService/icons/ombra
-          elif [ -f "logob.png" ]; then
+          
+          # Копіювання прозорого логотипу (logob.png або logo.png)
+          if [ -f "logob.png" ]; then
+            sudo cp logob.png chroot/usr/share/pixmaps/ombra-transparent.png
             sudo cp logob.png chroot/etc/skel/.face
             sudo cp logob.png chroot/var/lib/AccountsService/icons/ombra
+          elif [ -f "logo.png" ]; then
+            sudo cp logo.png chroot/usr/share/pixmaps/ombra-transparent.png
+            sudo cp logo.png chroot/etc/skel/.face
+            sudo cp logo.png chroot/var/lib/AccountsService/icons/ombra
+          elif [ -f "avatar.png" ]; then
+            sudo cp avatar.png chroot/usr/share/pixmaps/ombra-transparent.png
+            sudo cp avatar.png chroot/etc/skel/.face
+            sudo cp avatar.png chroot/var/lib/AccountsService/icons/ombra
           fi
 
-      - name: Configure Ombra OS branding and Fastfetch
+      - name: Install Pure KDE Plasma 6, Firefox, Calamares Dependencies & System Tools
         run: |
           sudo chroot chroot bash -ec '
-          mkdir -p /usr/share/ombra /etc/skel/.config/fastfetch /etc/fastfetch /root/.config/fastfetch /usr/share/icons/hicolor/scalable/apps /usr/share/icons/hicolor/48x48/apps /usr/lib
+          export DEBIAN_FRONTEND=noninteractive
+          export DEBIAN_PRIORITY=critical
+
+          mkdir -p /etc/apt/apt.conf.d
+          echo "DPkg::Options { \"--force-confdef\"; \"--force-confold\"; };" > /etc/apt/apt.conf.d/99force-conf
+
+          sed -i "s/main/main contrib non-free non-free-firmware/g" /etc/apt/sources.list || true
+
+          apt-get update
+          apt-get install -y linux-image-amd64 live-boot live-config live-config-systemd systemd-sysv initramfs-tools squashfs-tools
+
+          mkdir -p /etc/initramfs-tools/conf.d
+          echo "MODULES=most" > /etc/initramfs-tools/conf.d/driver-policy
+          echo "overlay" >> /etc/initramfs-tools/modules
+          echo "squashfs" >> /etc/initramfs-tools/modules
+          echo "loop" >> /etc/initramfs-tools/modules
+          echo "uas" >> /etc/initramfs-tools/modules
+          echo "usb_storage" >> /etc/initramfs-tools/modules
+          update-initramfs -u -k all
+
+          # Встановлення пакетів
+          apt-get install -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" \
+            plasma-workspace plasma-desktop firefox-esr plasma-discover konsole dolphin kate fastfetch htop cmatrix tty-clock \
+            calamares calamares-settings-debian breeze-icon-theme plasma-nm plasma-pa sddm partitionmanager ark gwenview curl git sudo nano \
+            network-manager polkitd pkexec bluez bluedevil usbutils dosfstools exfatprogs ntfs-3g firmware-linux-free \
+            qml-module-qtquick2 qml-module-qtquick-controls2 qml-module-qtquick-layouts kdeconnect || true
+
+          # Видалення брендингу Debian
+          apt-get purge -y desktop-base plymouth-theme-debian-spinner base-files-extra || true
+          apt-get install -f -y
+          apt-get clean
+          '
+
+      - name: Configure Deep Ombra OS Branding & Total Icon Sweep
+        run: |
+          sudo chroot chroot bash -ec '
+          mkdir -p /usr/share/ombra /etc/skel/.config/fastfetch /etc/fastfetch /root/.config/fastfetch /usr/share/icons/hicolor/scalable/apps /usr/share/icons/hicolor/48x48/apps /usr/lib /usr/share/icons/vendor
           
-          # Очищення та запис os-release для KDE Info Center
+          # Очищення та запис os-release
           rm -f /etc/os-release /usr/lib/os-release
 
           cat << "EOF_OS" > /usr/lib/os-release
           NAME="Ombra OS"
           VERSION="1.0"
           ID=ombra
-          ID_LIKE=debian
+          ID_LIKE=arch
           PRETTY_NAME="Ombra OS 1.0"
           VERSION_ID="1.0"
           HOME_URL="https://github.com/Braelfet/ombra-os"
@@ -74,24 +118,26 @@ jobs:
 
           ln -sf /usr/lib/os-release /etc/os-release
 
-          echo -e "Ombra OS 1.0 \n \l" > /etc/issue
+          echo "Ombra OS 1.0" > /etc/issue
           echo "Ombra OS 1.0" > /etc/issue.net
           echo "1.0" > /etc/debian_version
 
-          # Заміна системних логотипів Debian на Ombra OS у всіх темах
-          if [ -f /etc/skel/.face ]; then
+          # Тотальна заміна всіх іконок у всіх каталогах, включаючи desktop-base та vendor
+          if [ -f /usr/share/pixmaps/ombra-transparent.png ]; then
+            P="/usr/share/pixmaps/ombra-transparent.png"
+            
+            cp $P /usr/share/pixmaps/debian-logo.png
+            cp $P /usr/share/pixmaps/debian-logo.svg
+            cp $P /usr/share/pixmaps/ombra-logo.png
+            cp $P /usr/share/pixmaps/ombra.png
+            
+            # Заміна логотипів у /usr/share/icons/ включаючи /usr/share/icons/desktop-base/
+            find /usr/share/icons/ -type f \( -name "emblem-vendor*" -o -name "debian-logo*" -o -name "distro-debian*" -o -name "vendor-logo*" -o -name "*debian*" \) -exec cp $P {} \;
+            
+            # Створення піддерева desktop-base із заміною фонів та емблем
             mkdir -p /usr/share/desktop-base/common/images
-            cp /etc/skel/.face /usr/share/pixmaps/debian-logo.png
-            cp /etc/skel/.face /usr/share/pixmaps/debian-logo.svg
-            cp /etc/skel/.face /usr/share/pixmaps/ombra-logo.png
-            cp /etc/skel/.face /usr/share/pixmaps/ombra.png
-            cp /etc/skel/.face /usr/share/icons/hicolor/scalable/apps/ombra.png
-            cp /etc/skel/.face /usr/share/icons/hicolor/scalable/apps/debian-logo.png
-            cp /etc/skel/.face /usr/share/icons/hicolor/scalable/apps/distro-debian.svg
-            cp /etc/skel/.face /usr/share/icons/hicolor/48x48/apps/ombra.png
-            cp /etc/skel/.face /usr/share/icons/hicolor/48x48/apps/debian-logo.png
-            cp /etc/skel/.face /usr/share/icons/hicolor/48x48/apps/distro-debian.png
-            cp /etc/skel/.face /usr/share/desktop-base/common/images/login-background.svg
+            find /usr/share/desktop-base/ -type f -exec cp $P {} \; 2>/dev/null || true
+            cp $P /usr/share/desktop-base/common/images/login-background.svg
           fi
 
           if [ -f /usr/share/ombra_color.txt ]; then
@@ -149,46 +195,10 @@ jobs:
           echo "fastfetch" >> /root/.bashrc
           '
 
-      - name: Install Pure KDE Plasma 6, Firefox, Calamares Dependencies & System Tools
+      - name: Configure Calamares Installer & Root Privileges Shortcut
         run: |
           sudo chroot chroot bash -ec '
-          export DEBIAN_FRONTEND=noninteractive
-          export DEBIAN_PRIORITY=critical
-
-          mkdir -p /etc/apt/apt.conf.d
-          echo "DPkg::Options { \"--force-confdef\"; \"--force-confold\"; };" > /etc/apt/apt.conf.d/99force-conf
-
-          sed -i "s/main/main contrib non-free non-free-firmware/g" /etc/apt/sources.list || true
-
-          apt-get update
-          apt-get install -y linux-image-amd64 live-boot live-config live-config-systemd systemd-sysv initramfs-tools squashfs-tools
-
-          mkdir -p /etc/initramfs-tools/conf.d
-          echo "MODULES=most" > /etc/initramfs-tools/conf.d/driver-policy
-          echo "overlay" >> /etc/initramfs-tools/modules
-          echo "squashfs" >> /etc/initramfs-tools/modules
-          echo "loop" >> /etc/initramfs-tools/modules
-          echo "uas" >> /etc/initramfs-tools/modules
-          echo "usb_storage" >> /etc/initramfs-tools/modules
-          update-initramfs -u -k all
-
-          # Встановлення софту
-          apt-get install -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" \
-            plasma-workspace plasma-desktop firefox-esr plasma-discover konsole dolphin kate fastfetch htop cmatrix tty-clock \
-            calamares calamares-settings-debian breeze-icon-theme plasma-nm plasma-pa sddm partitionmanager ark gwenview curl git sudo nano \
-            network-manager polkitd pkexec bluez bluedevil usbutils dosfstools exfatprogs ntfs-3g firmware-linux-free \
-            qml-module-qtquick2 qml-module-qtquick-controls2 qml-module-qtquick-layouts kdeconnect || true
-
-          # Видалення брендингу Debian
-          apt-get purge -y desktop-base plymouth-theme-debian-spinner || true
-          apt-get install -f -y
-          apt-get clean
-          '
-
-      - name: Configure Calamares Branding & Modify Existing Shortcuts
-        run: |
-          sudo chroot chroot bash -ec '
-          mkdir -p /etc/calamares /etc/calamares/branding/ombra /etc/skel/Desktop
+          mkdir -p /etc/calamares /etc/calamares/branding/ombra /etc/skel/Desktop /usr/share/applications
 
           if [ -f /etc/calamares/settings.conf.bak ]; then
             cp /etc/calamares/settings.conf.bak /etc/calamares/settings.conf
@@ -215,8 +225,8 @@ jobs:
             productUrl:          "https://github.com/Braelfet/ombra-os"
 
           images:
-            productLogo:         "/usr/share/pixmaps/ombra-logo.png"
-            productIcon:         "/usr/share/pixmaps/ombra-logo.png"
+            productLogo:         "/usr/share/pixmaps/ombra-transparent.png"
+            productIcon:         "/usr/share/pixmaps/ombra-transparent.png"
 
           slideshow:             "show.qml"
 
@@ -250,17 +260,25 @@ jobs:
           }
           EOF_QML
 
-          # Модифікація існуючих .desktop файлів Calamares без створення нових приложеній
-          for f in /usr/share/applications/calamares.desktop /usr/share/applications/install-debian.desktop /usr/share/applications/install-media.desktop; do
-            if [ -f "$f" ]; then
-              sed -i "s/Name=.*/Name=Install Ombra OS 1.0/g" "$f"
-              sed -i "s/Comment=.*/Comment=Install Ombra OS 1.0 to your hard drive/g" "$f"
-              sed -i "s/GenericName=.*/GenericName=Install Ombra OS 1.0/g" "$f"
-              cp "$f" /etc/skel/Desktop/ || true
-            fi
-          done
+          rm -f /usr/share/applications/install-debian.desktop /usr/share/applications/calamares.desktop /usr/share/applications/install-media.desktop || true
 
-          # Ярлики "This PC", "Home", "Trash" для робочого столу
+          cat << "EOF_DESKTOP" > /usr/share/applications/install-ombra.desktop
+          [Desktop Entry]
+          Type=Application
+          Version=1.0
+          Name=Install Ombra OS 1.0
+          GenericName=System Installer
+          Comment=Install Ombra OS 1.0 to your system with full administrative privileges
+          Exec=pkexec calamares
+          Icon=ombra-transparent
+          Terminal=false
+          Categories=System;
+          X-KDE-SubstituteUID=true
+          EOF_DESKTOP
+
+          cp /usr/share/applications/install-ombra.desktop /etc/skel/Desktop/ || true
+
+          # Ярлики "This PC", "Home", "Trash"
           cat << "EOF_THIS_PC" > /etc/skel/Desktop/this-pc.desktop
           [Desktop Entry]
           Type=Application
