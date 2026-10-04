@@ -31,13 +31,21 @@ jobs:
 
       - name: Copy repository assets to chroot
         run: |
-          sudo mkdir -p chroot/usr/share/wallpapers/Ombra/contents/images chroot/usr/share/pixmaps chroot/etc/skel chroot/var/lib/AccountsService/icons
-          
+          sudo mkdir -p chroot/usr/share/wallpapers/Ombra/contents/images \
+                         chroot/usr/share/pixmaps \
+                         chroot/etc/skel \
+                         chroot/var/lib/AccountsService/icons \
+                         chroot/usr/share/icons/hicolor/scalable/apps \
+                         chroot/usr/share/icons/hicolor/48x48/apps
+
+          # Копіювання ASCII-логотипу
           if [ -f "ombra_color.txt" ]; then
             sudo cp ombra_color.txt chroot/usr/share/ombra_color.txt
           elif [ -f "ombra_raw.txt" ]; then
             sudo cp ombra_raw.txt chroot/usr/share/ombra_color.txt
           fi
+
+          # Копіювання шпалер (Wallpaper)
           if [ -f "wallpaper.png" ]; then
             sudo cp wallpaper.png chroot/usr/share/wallpapers/Ombra/contents/images/1920x1080.png
             sudo cp wallpaper.png chroot/usr/share/wallpapers/ombra_wallpaper.png
@@ -45,20 +53,24 @@ jobs:
             sudo cp wallpaper.jpg chroot/usr/share/wallpapers/Ombra/contents/images/1920x1080.png
             sudo cp wallpaper.jpg chroot/usr/share/wallpapers/ombra_wallpaper.png
           fi
-          
-          # Копіювання прозорого логотипу (logob.png або logo.png)
-          if [ -f "logob.png" ]; then
-            sudo cp logob.png chroot/usr/share/pixmaps/ombra-transparent.png
-            sudo cp logob.png chroot/etc/skel/.face
-            sudo cp logob.png chroot/var/lib/AccountsService/icons/ombra
-          elif [ -f "logo.png" ]; then
-            sudo cp logo.png chroot/usr/share/pixmaps/ombra-transparent.png
-            sudo cp logo.png chroot/etc/skel/.face
-            sudo cp logo.png chroot/var/lib/AccountsService/icons/ombra
-          elif [ -f "avatar.png" ]; then
-            sudo cp avatar.png chroot/usr/share/pixmaps/ombra-transparent.png
-            sudo cp avatar.png chroot/etc/skel/.face
-            sudo cp avatar.png chroot/var/lib/AccountsService/icons/ombra
+
+          # Розширене копіювання логотипів, іконок та аватарок
+          LOGO_SRC=""
+          for f in logob.png logo.png avatar.png icon.png logo.svg icon.svg; do
+            if [ -f "$f" ]; then
+              LOGO_SRC="$f"
+              break
+            fi
+          done
+
+          if [ -n "$LOGO_SRC" ]; then
+            sudo cp "$LOGO_SRC" chroot/usr/share/pixmaps/ombra-transparent.png
+            sudo cp "$LOGO_SRC" chroot/usr/share/pixmaps/ombra-logo.png
+            sudo cp "$LOGO_SRC" chroot/usr/share/pixmaps/ombra.png
+            sudo cp "$LOGO_SRC" chroot/etc/skel/.face
+            sudo cp "$LOGO_SRC" chroot/var/lib/AccountsService/icons/ombra
+            sudo cp "$LOGO_SRC" chroot/usr/share/icons/hicolor/scalable/apps/ombra.png 2>/dev/null || true
+            sudo cp "$LOGO_SRC" chroot/usr/share/icons/hicolor/48x48/apps/ombra.png 2>/dev/null || true
           fi
 
       - name: Install Pure KDE Plasma 6, Firefox, Calamares Dependencies & System Tools
@@ -84,14 +96,14 @@ jobs:
           echo "usb_storage" >> /etc/initramfs-tools/modules
           update-initramfs -u -k all
 
-          # Встановлення пакетів
+          # Встановлення основних пакетів
           apt-get install -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" \
             plasma-workspace plasma-desktop firefox-esr plasma-discover konsole dolphin kate fastfetch htop cmatrix tty-clock \
             calamares calamares-settings-debian breeze-icon-theme plasma-nm plasma-pa sddm partitionmanager ark gwenview curl git sudo nano \
             network-manager polkitd pkexec bluez bluedevil usbutils dosfstools exfatprogs ntfs-3g firmware-linux-free \
             qml-module-qtquick2 qml-module-qtquick-controls2 qml-module-qtquick-layouts kdeconnect || true
 
-          # Видалення брендингу Debian
+          # Видалення залишків брендингу Debian
           apt-get purge -y desktop-base plymouth-theme-debian-spinner base-files-extra || true
           apt-get install -f -y
           apt-get clean
@@ -109,7 +121,7 @@ jobs:
           NAME="Ombra OS"
           VERSION="1.0"
           ID=ombra
-          ID_LIKE=arch
+          ID_LIKE=debian
           PRETTY_NAME="Ombra OS 1.0"
           VERSION_ID="1.0"
           HOME_URL="https://github.com/Braelfet/ombra-os"
@@ -122,28 +134,29 @@ jobs:
           echo "Ombra OS 1.0" > /etc/issue.net
           echo "1.0" > /etc/debian_version
 
-          # Тотальна заміна всіх іконок у всіх каталогах, включаючи desktop-base та vendor
+          # Заміна системних іконок та брендингових емблем
           if [ -f /usr/share/pixmaps/ombra-transparent.png ]; then
             P="/usr/share/pixmaps/ombra-transparent.png"
             
             cp $P /usr/share/pixmaps/debian-logo.png
             cp $P /usr/share/pixmaps/debian-logo.svg
-            cp $P /usr/share/pixmaps/ombra-logo.png
-            cp $P /usr/share/pixmaps/ombra.png
+            cp $P /usr/share/pixmaps/start-here.png 2>/dev/null || true
+            cp $P /usr/share/pixmaps/start-here.svg 2>/dev/null || true
             
-            # Заміна логотипів у /usr/share/icons/ включаючи /usr/share/icons/desktop-base/
+            # Заміна логотипів у каталогах системних іконок
             find /usr/share/icons/ -type f \( -name "emblem-vendor*" -o -name "debian-logo*" -o -name "distro-debian*" -o -name "vendor-logo*" -o -name "*debian*" \) -exec cp $P {} \;
             
-            # Створення піддерева desktop-base із заміною фонів та емблем
+            # Налаштування структури desktop-base
             mkdir -p /usr/share/desktop-base/common/images
             find /usr/share/desktop-base/ -type f -exec cp $P {} \; 2>/dev/null || true
-            cp $P /usr/share/desktop-base/common/images/login-background.svg
+            cp $P /usr/share/desktop-base/common/images/login-background.svg 2>/dev/null || true
           fi
 
           if [ -f /usr/share/ombra_color.txt ]; then
             cp /usr/share/ombra_color.txt /usr/share/ombra/ascii_logo.txt
           fi
 
+          # Конфігурація Fastfetch
           cat << "EOFF" > /etc/fastfetch/config.jsonc
           {
             "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
