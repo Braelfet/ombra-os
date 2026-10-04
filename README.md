@@ -1,4 +1,4 @@
-# 🌒 Ombra OS
+# 💠 Ombra OS
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/Braelfet/ombra-os/main/logo.png" alt="Ombra OS Logo" width="160">
