@@ -71,7 +71,7 @@ jobs:
             sudo cp logo.png chroot/var/lib/AccountsService/icons/ombra
           fi
 
-      - name: Install Pure KDE Plasma 6, Office, PDF, EXE support & System Tools
+      - name: Install Pure KDE Plasma 6, Office, Multimedia & System Tools
         run: |
           sudo chroot chroot bash -ec '
           export DEBIAN_FRONTEND=noninteractive
@@ -81,7 +81,6 @@ jobs:
           echo "DPkg::Options { \"--force-confdef\"; \"--force-confold\"; };" > /etc/apt/apt.conf.d/99force-conf
 
           sed -i "s/main/main contrib non-free non-free-firmware/g" /etc/apt/sources.list || true
-          dpkg --add-architecture i386 || true
 
           apt-get update
           apt-get install -y linux-image-amd64 live-boot live-config live-config-systemd systemd-sysv initramfs-tools squashfs-tools
@@ -95,14 +94,14 @@ jobs:
           echo "usb_storage" >> /etc/initramfs-tools/modules
           update-initramfs -u -k all
 
-          # Встановлення пакетів: Офіс, PDF (Okular), EXE (Wine), Антивірус (ClamTk)
+          # Встановлення пакетів: Office, PDF (Okular), Paint (Kolourpaint), Плеєри (Elisa, Haruna/VLC), Антивірус (ClamTk)
           apt-get install -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" \
             plasma-workspace plasma-desktop firefox-esr plasma-discover konsole dolphin kate fastfetch htop cmatrix tty-clock \
             calamares calamares-settings-debian breeze-icon-theme plasma-nm plasma-pa sddm partitionmanager ark gwenview curl git sudo nano \
             network-manager polkitd pkexec bluez bluedevil usbutils dosfstools exfatprogs ntfs-3g firmware-linux-free \
             qml-module-qtquick2 qml-module-qtquick-controls2 qml-module-qtquick-layouts kdeconnect \
             okular libreoffice libreoffice-plasma libreoffice-l10n-uk \
-            wine wine64 clamtk clamav || true
+            kolourpaint elisa vlc clamtk clamav ffmpegthumbs || true
 
           # Видалення залишків брендингу Debian
           apt-get purge -y desktop-base plymouth-theme-debian-spinner base-files-extra || true
