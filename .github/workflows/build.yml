@@ -100,7 +100,7 @@ jobs:
           echo "usb_storage" >> /etc/initramfs-tools/modules
           update-initramfs -u -k all
 
-          # Пакети системи (Без || true для точного контролю помилок)
+          # Пакети системи (Без || true)
           apt-get install -y \
             plasma-workspace plasma-desktop firefox-esr plasma-discover konsole dolphin kate fastfetch htop cmatrix tty-clock \
             calamares calamares-settings-debian breeze-icon-theme plasma-nm plasma-pa sddm partitionmanager ark gwenview curl git sudo nano \
@@ -109,8 +109,8 @@ jobs:
             okular libreoffice libreoffice-plasma libreoffice-l10n-uk \
             kolourpaint elisa vlc clamtk clamav ffmpegthumbs
 
-          # Видалення залишків брендингу Debian
-          apt-get purge -y desktop-base plymouth-theme-debian-spinner base-files-extra || true
+          # Видалення залишків брендингу Debian (Прибрано неіснуючі пакети trixie)
+          apt-get purge -y desktop-base || true
           apt-get install -f -y
           apt-get clean
           '
@@ -206,9 +206,9 @@ jobs:
           cp /etc/fastfetch/config.jsonc /etc/skel/.config/fastfetch/config.jsonc
           cp /etc/fastfetch/config.jsonc /root/.config/fastfetch/config.jsonc
           
-          # Запуск fastfetch тільки в інтерактивному терміналі
-          echo '[[ $- == *i* ]] && fastfetch' >> /etc/skel/.bashrc
-          echo '[[ $- == *i* ]] && fastfetch' >> /root/.bashrc
+          # ВИПРАВЛЕНО: Правильний синтаксис запису перевірки term в bashrc
+          echo 'if [[ $- == *i* ]]; then fastfetch; fi' >> /etc/skel/.bashrc
+          echo 'if [[ $- == *i* ]]; then fastfetch; fi' >> /root/.bashrc
           '
 
       - name: Configure Calamares Installer & Shortcuts
@@ -402,8 +402,7 @@ jobs:
           EOF_SCRIPT
           chmod +x /usr/local/bin/ombra-init-desktop
 
-          # Оновлення кешу системних ікон
-          gtk-update-icon-cache /usr/share/icons/hicolor || true
+          touch /usr/share/icons/hicolor
           '
 
       - name: Configure Live User (ombra) and Guaranteed SDDM Autologin
@@ -428,7 +427,7 @@ jobs:
           
           chown -R ombra:ombra /home/ombra
 
-          # SDDM Autologin для Live-сесії
+          # SDDM Autologin
           mkdir -p /etc/sddm.conf.d
           cat << "EOF_SDDM" > /etc/sddm.conf.d/autologin.conf
           [Autologin]
