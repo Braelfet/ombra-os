@@ -20,7 +20,7 @@
 
 ## 📌 About
 
-**Ombra OS** is a custom, performance-optimized Linux distribution crafted for users who value speed, system stability, and modern aesthetics out of the box. Powered by **Debian Trixie (Testing)** and pure **KDE Plasma 6**, Ombra OS offers a complete, lightweight desktop experience with full multimedia support, office suites, and pre-configured system tools — without unnecessary background resource bloat.
+**Ombra OS** is a custom, performance-optimized Linux distribution crafted for users who value speed, system stability, and modern aesthetics out of the box. Powered by **Debian Trixie (13)** and pure **KDE Plasma 6**, Ombra OS offers a complete, lightweight desktop experience with full multimedia support, office suites, and pre-configured system tools — without unnecessary background resource bloat.
 
 ---
 
@@ -92,7 +92,7 @@ Double-click the **Install Ombra OS** launcher on the desktop or main menu, foll
 
 ## 🛠️ Built With
 
-* **Base:** [Debian GNU/Linux (Trixie/Testing)](https://www.debian.org/)
+* **Base:** [Debian GNU/Linux (Trixie)](https://www.debian.org/)
 * **Desktop Environment:** [KDE Plasma 6](https://kde.org/plasma-desktop/)
 * **Build System:** Custom GitHub Actions Workflow with `debootstrap`, `squashfs-tools`, and `grub-mkrescue`.
 
