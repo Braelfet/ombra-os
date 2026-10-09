@@ -100,7 +100,7 @@ jobs:
           echo "usb_storage" >> /etc/initramfs-tools/modules
           update-initramfs -u -k all
 
-          # Пакети системи (Без || true)
+          # Пакети системи
           apt-get install -y \
             plasma-workspace plasma-desktop firefox-esr plasma-discover konsole dolphin kate fastfetch htop cmatrix tty-clock \
             calamares calamares-settings-debian breeze-icon-theme plasma-nm plasma-pa sddm partitionmanager ark gwenview curl git sudo nano \
@@ -109,13 +109,13 @@ jobs:
             okular libreoffice libreoffice-plasma libreoffice-l10n-uk \
             kolourpaint elisa vlc clamtk clamav ffmpegthumbs
 
-          # Видалення залишків брендингу Debian (Прибрано неіснуючі пакети trixie)
-          apt-get purge -y desktop-base || true
+          # Видалення залишків брендингу Debian 
+          apt-get purge -y desktop-base 2>/dev/null || true
           apt-get install -f -y
           apt-get clean
           '
 
-      - name: Configure Deep Ombra OS Branding & Total Icon Sweep
+      - name: Configure Deep Ombra OS Branding & Icon Sweeping
         run: |
           sudo chroot chroot bash -ec '
           mkdir -p /usr/share/ombra /etc/skel/.config/fastfetch /etc/fastfetch /root/.config/fastfetch /usr/share/icons/hicolor/scalable/apps /usr/share/icons/hicolor/48x48/apps /usr/lib /usr/share/icons/vendor
@@ -136,9 +136,8 @@ jobs:
 
           echo "Ombra OS" > /etc/issue
           echo "Ombra OS" > /etc/issue.net
-          echo "Ombra OS" > /etc/debian_version
 
-          # Заміна системних емблем та іконок меню на новий logo.png
+          # Точкова заміна системних емблем дистрибутива на logo.png
           if [ -f /usr/share/pixmaps/ombra-transparent.png ]; then
             P="/usr/share/pixmaps/ombra-transparent.png"
             
@@ -147,10 +146,9 @@ jobs:
             cp $P /usr/share/pixmaps/start-here.png 2>/dev/null || true
             cp $P /usr/share/pixmaps/start-here.svg 2>/dev/null || true
             
-            find /usr/share/icons/ -type f \( -name "emblem-vendor*" -o -name "debian-logo*" -o -name "distro-debian*" -o -name "vendor-logo*" -o -name "*debian*" \) -exec cp $P {} \;
+            find /usr/share/icons/ -type f \( -name "emblem-vendor*" -o -name "debian-logo*" -o -name "distro-debian*" -o -name "vendor-logo*" \) -exec cp $P {} \;
             
             mkdir -p /usr/share/desktop-base/common/images
-            find /usr/share/desktop-base/ -type f -exec cp $P {} \; 2>/dev/null || true
             cp $P /usr/share/desktop-base/common/images/login-background.svg 2>/dev/null || true
           fi
 
@@ -206,9 +204,9 @@ jobs:
           cp /etc/fastfetch/config.jsonc /etc/skel/.config/fastfetch/config.jsonc
           cp /etc/fastfetch/config.jsonc /root/.config/fastfetch/config.jsonc
           
-          # ВИПРАВЛЕНО: Правильний синтаксис запису перевірки term в bashrc
-          echo 'if [[ $- == *i* ]]; then fastfetch; fi' >> /etc/skel/.bashrc
-          echo 'if [[ $- == *i* ]]; then fastfetch; fi' >> /root/.bashrc
+          # Запуск fastfetch тільки в інтерактивній сесії (без синтаксичних помилок)
+          echo "[[ \$- == *i* ]] && fastfetch" >> /etc/skel/.bashrc
+          echo "[[ \$- == *i* ]] && fastfetch" >> /root/.bashrc
           '
 
       - name: Configure Calamares Installer & Shortcuts
@@ -401,8 +399,6 @@ jobs:
           "
           EOF_SCRIPT
           chmod +x /usr/local/bin/ombra-init-desktop
-
-          touch /usr/share/icons/hicolor
           '
 
       - name: Configure Live User (ombra) and Guaranteed SDDM Autologin
@@ -474,14 +470,19 @@ jobs:
 
       - name: Build ISO Image & Generate Checksum
         run: |
-          grub-mkrescue -o ombra-os-trixie-kde.iso iso/
-          sha256sum ombra-os-trixie-kde.iso > SHA256SUMS.txt
+          BUILD_DATE=$(date +%Y.%m.%d)
+          ISO_NAME="ombra-os-trixie-kde-${BUILD_DATE}.iso"
+          
+          grub-mkrescue -o "${ISO_NAME}" iso/
+          sha256sum "${ISO_NAME}" > SHA256SUMS.txt
+          
+          echo "ISO_FILENAME=${ISO_NAME}" >> $GITHUB_ENV
 
       - name: Upload ISO Artifact & Checksum
         uses: actions/upload-artifact@v4
         with:
           name: Ombra-OS-ISO
           path: |
-            ombra-os-trixie-kde.iso
+            ${{ env.ISO_FILENAME }}
             SHA256SUMS.txt
             
