@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <b>A sleek, lightweight, and modern Linux distribution based on Debian Trixie (Testing) with KDE Plasma 6.</b>
+  <b>A sleek, lightweight, and modern Linux distribution based on Debian Trixie (13) with KDE Plasma 6.</b>
 </p>
 
 <p align="center">
