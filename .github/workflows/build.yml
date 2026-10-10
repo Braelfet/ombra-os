@@ -274,11 +274,15 @@ jobs:
           }
           EOF_QML
 
-          # Вичищаємо зайві сторонні ярлики, щоб не було дублікатів
+          # 1. Приховування та видалення зайвих ярликів Debian
           rm -f /usr/share/applications/install-debian.desktop /usr/share/applications/install-media.desktop || true
+          
+          if [ -f /usr/share/applications/calamares.desktop ]; then
+            echo "NoDisplay=true" >> /usr/share/applications/calamares.desktop
+          fi
 
-          # Створюємо єдиний правильний працездатний системний ярлик Install Ombra OS
-          cat << "EOF_DESKTOP" > /usr/share/applications/calamares.desktop
+          # 2. Створення єдиного чинного ярлика Install Ombra OS
+          cat << "EOF_DESKTOP" > /usr/share/applications/ombra-installer.desktop
           [Desktop Entry]
           Type=Application
           Version=1.0
@@ -292,8 +296,8 @@ jobs:
           X-KDE-SubstituteUID=true
           EOF_DESKTOP
 
-          # Копіюємо його на робочий стіл користувача
-          cp /usr/share/applications/calamares.desktop /etc/skel/Desktop/install-ombra.desktop
+          # Копіюємо його на робочий стіл
+          cp /usr/share/applications/ombra-installer.desktop /etc/skel/Desktop/install-ombra.desktop
 
           # Ярлики Робочого столу
           cat << "EOF_THIS_PC" > /etc/skel/Desktop/this-pc.desktop
