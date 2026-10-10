@@ -204,7 +204,7 @@ jobs:
           cp /etc/fastfetch/config.jsonc /etc/skel/.config/fastfetch/config.jsonc
           cp /etc/fastfetch/config.jsonc /root/.config/fastfetch/config.jsonc
           
-          # Запуск fastfetch тільки в інтерактивній сесії (без синтаксичних помилок)
+          # Запуск fastfetch тільки в інтерактивній сесії
           echo "[[ \$- == *i* ]] && fastfetch" >> /etc/skel/.bashrc
           echo "[[ \$- == *i* ]] && fastfetch" >> /root/.bashrc
           '
@@ -274,24 +274,26 @@ jobs:
           }
           EOF_QML
 
-          rm -f /usr/share/applications/install-debian.desktop /usr/share/applications/calamares.desktop /usr/share/applications/install-media.desktop || true
+          # Вичищаємо зайві сторонні ярлики, щоб не було дублікатів
+          rm -f /usr/share/applications/install-debian.desktop /usr/share/applications/install-media.desktop || true
 
-          # Ярлик інсталятора "Install Ombra OS"
-          cat << "EOF_DESKTOP" > /usr/share/applications/install-ombra.desktop
+          # Створюємо єдиний правильний працездатний системний ярлик Install Ombra OS
+          cat << "EOF_DESKTOP" > /usr/share/applications/calamares.desktop
           [Desktop Entry]
           Type=Application
           Version=1.0
           Name=Install Ombra OS
           GenericName=System Installer
           Comment=Install Ombra OS permanently on your computer
-          Exec=pkexec calamares
+          Exec=sudo calamares
           Icon=ombra-transparent
           Terminal=false
           Categories=System;
           X-KDE-SubstituteUID=true
           EOF_DESKTOP
 
-          cp /usr/share/applications/install-ombra.desktop /etc/skel/Desktop/ || true
+          # Копіюємо його на робочий стіл користувача
+          cp /usr/share/applications/calamares.desktop /etc/skel/Desktop/install-ombra.desktop
 
           # Ярлики Робочого столу
           cat << "EOF_THIS_PC" > /etc/skel/Desktop/this-pc.desktop
