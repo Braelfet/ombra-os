@@ -100,19 +100,14 @@ jobs:
           echo "usb_storage" >> /etc/initramfs-tools/modules
           update-initramfs -u -k all
 
-          # Пакети системи
+          # Пакети системи (без сміттєвого calamares-settings-debian)
           apt-get install -y \
             plasma-workspace plasma-desktop firefox-esr plasma-discover konsole dolphin kate fastfetch htop cmatrix tty-clock \
-            calamares calamares-settings-debian breeze-icon-theme plasma-nm plasma-pa sddm partitionmanager ark gwenview curl git sudo nano \
+            calamares breeze-icon-theme plasma-nm plasma-pa sddm partitionmanager ark gwenview curl git sudo nano \
             network-manager polkitd pkexec bluez bluedevil usbutils dosfstools exfatprogs ntfs-3g firmware-linux-free \
             qml-module-qtquick2 qml-module-qtquick-controls2 qml-module-qtquick-layouts kdeconnect \
             okular libreoffice libreoffice-plasma libreoffice-l10n-uk \
             kolourpaint elisa vlc clamtk clamav ffmpegthumbs
-
-          # Агресивне знищення та блокування Install Debian від calamares-settings-debian
-          rm -f /usr/share/applications/install-debian.desktop /usr/share/applications/install-media.desktop /usr/share/applications/calamares.desktop || true
-          ln -s /dev/null /usr/share/applications/install-debian.desktop 2>/dev/null || true
-          ln -s /dev/null /usr/share/applications/calamares.desktop 2>/dev/null || true
 
           # Видалення залишків брендингу Debian 
           apt-get purge -y desktop-base 2>/dev/null || true
@@ -219,13 +214,32 @@ jobs:
           sudo chroot chroot bash -ec '
           mkdir -p /etc/calamares /etc/calamares/branding/ombra /etc/skel/Desktop /usr/share/applications
 
-          if [ -f /etc/calamares/settings.conf.bak ]; then
-            cp /etc/calamares/settings.conf.bak /etc/calamares/settings.conf
-          elif [ -f /usr/share/calamares/settings.conf ]; then
-            cp /usr/share/calamares/settings.conf /etc/calamares/settings.conf || true
-          fi
+          cat << "EOF_CAL_CONF" > /etc/calamares/settings.conf
+          modules:
+            - welcome
+            - locale
+            - keyboard
+            - partition
+            - users
+            - summary
+            - install
+            - finished
 
-          sed -i "s/branding: .*/branding: ombra/" /etc/calamares/settings.conf || true
+          sequence:
+            - show:
+              - welcome
+              - locale
+              - keyboard
+              - partition
+              - users
+              - summary
+              - install
+              - finished
+
+          branding: ombra
+          prompt-install: false
+          dont-chroot: false
+          EOF_CAL_CONF
 
           cat << "EOF_CAL_BRAND" > /etc/calamares/branding/ombra/branding.desc
           ---
@@ -279,12 +293,7 @@ jobs:
           }
           EOF_QML
 
-          # Повторне захисне блокування від створення Install Debian
-          rm -f /usr/share/applications/install-debian.desktop /usr/share/applications/install-media.desktop /usr/share/applications/calamares.desktop || true
-          ln -sf /dev/null /usr/share/applications/install-debian.desktop
-          ln -sf /dev/null /usr/share/applications/calamares.desktop
-
-          # Створення нашого єдиного чистого ярлика Install Ombra OS
+          # Створення єдиного чистого ярлика Install Ombra OS
           cat << "EOF_DESKTOP" > /usr/share/applications/ombra-installer.desktop
           [Desktop Entry]
           Type=Application
