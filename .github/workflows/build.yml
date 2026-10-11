@@ -109,6 +109,11 @@ jobs:
             okular libreoffice libreoffice-plasma libreoffice-l10n-uk \
             kolourpaint elisa vlc clamtk clamav ffmpegthumbs
 
+          # Агресивне знищення та блокування Install Debian від calamares-settings-debian
+          rm -f /usr/share/applications/install-debian.desktop /usr/share/applications/install-media.desktop /usr/share/applications/calamares.desktop || true
+          ln -s /dev/null /usr/share/applications/install-debian.desktop 2>/dev/null || true
+          ln -s /dev/null /usr/share/applications/calamares.desktop 2>/dev/null || true
+
           # Видалення залишків брендингу Debian 
           apt-get purge -y desktop-base 2>/dev/null || true
           apt-get install -f -y
@@ -274,14 +279,12 @@ jobs:
           }
           EOF_QML
 
-          # 1. Приховування та видалення зайвих ярликів Debian
-          rm -f /usr/share/applications/install-debian.desktop /usr/share/applications/install-media.desktop || true
-          
-          if [ -f /usr/share/applications/calamares.desktop ]; then
-            echo "NoDisplay=true" >> /usr/share/applications/calamares.desktop
-          fi
+          # Повторне захисне блокування від створення Install Debian
+          rm -f /usr/share/applications/install-debian.desktop /usr/share/applications/install-media.desktop /usr/share/applications/calamares.desktop || true
+          ln -sf /dev/null /usr/share/applications/install-debian.desktop
+          ln -sf /dev/null /usr/share/applications/calamares.desktop
 
-          # 2. Створення єдиного чинного ярлика Install Ombra OS
+          # Створення нашого єдиного чистого ярлика Install Ombra OS
           cat << "EOF_DESKTOP" > /usr/share/applications/ombra-installer.desktop
           [Desktop Entry]
           Type=Application
@@ -296,7 +299,7 @@ jobs:
           X-KDE-SubstituteUID=true
           EOF_DESKTOP
 
-          # Копіюємо його на робочий стіл
+          # Копіюємо його на робочий стіл користувача
           cp /usr/share/applications/ombra-installer.desktop /etc/skel/Desktop/install-ombra.desktop
 
           # Ярлики Робочого столу
