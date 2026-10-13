@@ -17,18 +17,15 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y debootstrap squashfs-tools xorriso grub-pc-bin grub-efi-amd64-bin mtools debian-archive-keyring
-
       - name: Create chroot environment with GPG checks enabled
         run: |
           sudo debootstrap --arch=amd64 trixie chroot http://deb.debian.org/debian/
-
       - name: Mount virtual filesystems for chroot
         run: |
           sudo mount --bind /dev chroot/dev
           sudo mount --bind /dev/pts chroot/dev/pts
           sudo mount -t proc proc chroot/proc
           sudo mount -t sysfs sysfs chroot/sys
-
       - name: Copy repository assets to chroot
         run: |
           sudo mkdir -p chroot/usr/share/wallpapers/Ombra/contents/images \
@@ -37,14 +34,12 @@ jobs:
                          chroot/var/lib/AccountsService/icons \
                          chroot/usr/share/icons/hicolor/scalable/apps \
                          chroot/usr/share/icons/hicolor/48x48/apps
-
           # ASCII лого
           if [ -f "ombra_color.txt" ]; then
             sudo cp ombra_color.txt chroot/usr/share/ombra_color.txt
           elif [ -f "ombra_raw.txt" ]; then
             sudo cp ombra_raw.txt chroot/usr/share/ombra_color.txt
           fi
-
           # Шпалери
           if [ -f "wallpaper.png" ]; then
             sudo cp wallpaper.png chroot/usr/share/wallpapers/Ombra/contents/images/1920x1080.png
@@ -53,7 +48,6 @@ jobs:
             sudo cp wallpaper.jpg chroot/usr/share/wallpapers/Ombra/contents/images/1920x1080.png
             sudo cp wallpaper.jpg chroot/usr/share/wallpapers/ombra_wallpaper.png
           fi
-
           # 1. Основний Мінімалістичний logo.png -> Система, Меню Пуск, Calamares, Про систему
           if [ -f "logo.png" ]; then
             sudo cp logo.png chroot/usr/share/pixmaps/ombra-transparent.png
@@ -62,7 +56,6 @@ jobs:
             sudo cp logo.png chroot/usr/share/icons/hicolor/scalable/apps/ombra.png
             sudo cp logo.png chroot/usr/share/icons/hicolor/48x48/apps/ombra.png
           fi
-
           # 2. logob.png (з фоном) -> Аватарка користувача в SDDM та системі
           if [ -f "logob.png" ]; then
             sudo cp logob.png chroot/etc/skel/.face
@@ -71,26 +64,21 @@ jobs:
             sudo cp logo.png chroot/etc/skel/.face
             sudo cp logo.png chroot/var/lib/AccountsService/icons/ombra
           fi
-
-      - name: Install Pure KDE Plasma 6, Office, Multimedia & System Tools
+      - name: Install Pure KDE Plasma 6, UEFI Bootloaders, Drivers & System Tools
         run: |
           sudo chroot chroot bash -ec '
           export DEBIAN_FRONTEND=noninteractive
           export DEBIAN_PRIORITY=critical
-
           mkdir -p /etc/apt/apt.conf.d
           echo "DPkg::Options { \"--force-confdef\"; \"--force-confold\"; };" > /etc/apt/apt.conf.d/99force-conf
-
           if [ -f /etc/apt/sources.list ]; then
             sed -i "s/main/main contrib non-free non-free-firmware/g" /etc/apt/sources.list
           fi
           if [ -f /etc/apt/sources.list.d/debian.sources ]; then
             sed -i "s/Components: main/Components: main contrib non-free non-free-firmware/g" /etc/apt/sources.list.d/debian.sources
           fi
-
           apt-get update
           apt-get install -y linux-image-amd64 live-boot live-config live-config-systemd systemd-sysv initramfs-tools squashfs-tools
-
           mkdir -p /etc/initramfs-tools/conf.d
           echo "MODULES=most" > /etc/initramfs-tools/conf.d/driver-policy
           echo "overlay" >> /etc/initramfs-tools/modules
@@ -99,29 +87,31 @@ jobs:
           echo "uas" >> /etc/initramfs-tools/modules
           echo "usb_storage" >> /etc/initramfs-tools/modules
           update-initramfs -u -k all
-
-          # Пакети системи (без сміттєвого calamares-settings-debian)
+          # Пакети системи + обов’язкові UEFI завантажувачі та драйвери Wi-Fi для уникнення проблем на залізі
           apt-get install -y \
             plasma-workspace plasma-desktop firefox-esr plasma-discover konsole dolphin kate fastfetch htop cmatrix tty-clock \
-            calamares breeze-icon-theme plasma-nm plasma-pa sddm partitionmanager ark gwenview curl git sudo nano \
+            calamares calamares-settings-debian breeze-icon-theme plasma-nm plasma-pa sddm partitionmanager ark gwenview curl git sudo nano \
             network-manager polkitd pkexec bluez bluedevil usbutils dosfstools exfatprogs ntfs-3g firmware-linux-free \
+            grub-efi-amd64-signed shim-signed grub-common efibootmgr \
+            firmware-linux firmware-iwlwifi firmware-realtek firmware-atheros firmware-bnx2 firmware-bnx2x firmware-brcm80211 \
             qml-module-qtquick2 qml-module-qtquick-controls2 qml-module-qtquick-layouts kdeconnect \
             okular libreoffice libreoffice-plasma libreoffice-l10n-uk \
             kolourpaint elisa vlc clamtk clamav ffmpegthumbs
-
+          # Захисне блокування дебіанівських ярликів інсталятора
+          rm -f /usr/share/applications/install-debian.desktop /usr/share/applications/install-media.desktop /usr/share/applications/calamares.desktop || true
+          ln -s /dev/null /usr/share/applications/install-debian.desktop 2>/dev/null || true
+          ln -s /dev/null /usr/share/applications/calamares.desktop 2>/dev/null || true
           # Видалення залишків брендингу Debian 
           apt-get purge -y desktop-base 2>/dev/null || true
           apt-get install -f -y
           apt-get clean
           '
-
       - name: Configure Deep Ombra OS Branding & Icon Sweeping
         run: |
           sudo chroot chroot bash -ec '
           mkdir -p /usr/share/ombra /etc/skel/.config/fastfetch /etc/fastfetch /root/.config/fastfetch /usr/share/icons/hicolor/scalable/apps /usr/share/icons/hicolor/48x48/apps /usr/lib /usr/share/icons/vendor
           
           rm -f /etc/os-release /usr/lib/os-release
-
           # Назва системи: Ombra OS
           cat << "EOF_OS" > /usr/lib/os-release
           NAME="Ombra OS"
@@ -131,12 +121,9 @@ jobs:
           HOME_URL="https://github.com/Braelfet/ombra-os"
           LOGO="ombra"
           EOF_OS
-
           ln -sf /usr/lib/os-release /etc/os-release
-
           echo "Ombra OS" > /etc/issue
           echo "Ombra OS" > /etc/issue.net
-
           # Точкова заміна системних емблем дистрибутива на logo.png
           if [ -f /usr/share/pixmaps/ombra-transparent.png ]; then
             P="/usr/share/pixmaps/ombra-transparent.png"
@@ -151,11 +138,9 @@ jobs:
             mkdir -p /usr/share/desktop-base/common/images
             cp $P /usr/share/desktop-base/common/images/login-background.svg 2>/dev/null || true
           fi
-
           if [ -f /usr/share/ombra_color.txt ]; then
             cp /usr/share/ombra_color.txt /usr/share/ombra/ascii_logo.txt
           fi
-
           cat << "EOFF" > /etc/fastfetch/config.jsonc
           {
             "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
@@ -200,7 +185,6 @@ jobs:
             ]
           }
           EOFF
-
           cp /etc/fastfetch/config.jsonc /etc/skel/.config/fastfetch/config.jsonc
           cp /etc/fastfetch/config.jsonc /root/.config/fastfetch/config.jsonc
           
@@ -208,45 +192,21 @@ jobs:
           echo "[[ \$- == *i* ]] && fastfetch" >> /etc/skel/.bashrc
           echo "[[ \$- == *i* ]] && fastfetch" >> /root/.bashrc
           '
-
       - name: Configure Calamares Installer & Shortcuts
         run: |
           sudo chroot chroot bash -ec '
           mkdir -p /etc/calamares /etc/calamares/branding/ombra /etc/skel/Desktop /usr/share/applications
-
-          cat << "EOF_CAL_CONF" > /etc/calamares/settings.conf
-          modules:
-            - welcome
-            - locale
-            - keyboard
-            - partition
-            - users
-            - summary
-            - install
-            - finished
-
-          sequence:
-            - show:
-              - welcome
-              - locale
-              - keyboard
-              - partition
-              - users
-              - summary
-              - install
-              - finished
-
-          branding: ombra
-          prompt-install: false
-          dont-chroot: false
-          EOF_CAL_CONF
-
+          if [ -f /etc/calamares/settings.conf.bak ]; then
+            cp /etc/calamares/settings.conf.bak /etc/calamares/settings.conf
+          elif [ -f /usr/share/calamares/settings.conf ]; then
+            cp /usr/share/calamares/settings.conf /etc/calamares/settings.conf || true
+          fi
+          sed -i "s/branding: .*/branding: ombra/" /etc/calamares/settings.conf || true
           cat << "EOF_CAL_BRAND" > /etc/calamares/branding/ombra/branding.desc
           ---
           componentName:  ombra
           welcomeStyleCalamares: true
           welcomeExpandingWallpaper: true
-
           strings:
             productName:         "Ombra OS"
             shortProductName:    "Ombra"
@@ -256,24 +216,19 @@ jobs:
             shortVersionedName:  "Ombra OS"
             bootloaderEntryName: "Ombra OS"
             productUrl:          "https://github.com/Braelfet/ombra-os"
-
           images:
             productLogo:         "/usr/share/pixmaps/ombra-transparent.png"
             productIcon:         "/usr/share/pixmaps/ombra-transparent.png"
-
           slideshow:             "show.qml"
-
           style:
             sidebarBackground:    "#1e1e2e"
             sidebarText:          "#cdd6f4"
             sidebarTextSelect:    "#cba6f7"
             sidebarTextHighlight: "#89b4fa"
           EOF_CAL_BRAND
-
           cat << "EOF_QML" > /etc/calamares/branding/ombra/show.qml
           import QtQuick 2.0;
           import calamares.slideshow 1.0;
-
           Presentation {
               id: presentation
               Timer {
@@ -292,8 +247,11 @@ jobs:
               }
           }
           EOF_QML
-
-          # Створення єдиного чистого ярлика Install Ombra OS
+          # Повторне захисне блокування від створення Install Debian
+          rm -f /usr/share/applications/install-debian.desktop /usr/share/applications/install-media.desktop /usr/share/applications/calamares.desktop || true
+          ln -sf /dev/null /usr/share/applications/install-debian.desktop
+          ln -sf /dev/null /usr/share/applications/calamares.desktop
+          # Створення нашого єдиного чистого ярлика Install Ombra OS
           cat << "EOF_DESKTOP" > /usr/share/applications/ombra-installer.desktop
           [Desktop Entry]
           Type=Application
@@ -307,10 +265,8 @@ jobs:
           Categories=System;
           X-KDE-SubstituteUID=true
           EOF_DESKTOP
-
           # Копіюємо його на робочий стіл користувача
           cp /usr/share/applications/ombra-installer.desktop /etc/skel/Desktop/install-ombra.desktop
-
           # Ярлики Робочого столу
           cat << "EOF_THIS_PC" > /etc/skel/Desktop/this-pc.desktop
           [Desktop Entry]
@@ -322,7 +278,6 @@ jobs:
           Terminal=false
           Categories=System;
           EOF_THIS_PC
-
           cat << "EOF_HOME" > /etc/skel/Desktop/home.desktop
           [Desktop Entry]
           Type=Application
@@ -333,7 +288,6 @@ jobs:
           Terminal=false
           Categories=System;
           EOF_HOME
-
           cat << "EOF_TRASH" > /etc/skel/Desktop/trash.desktop
           [Desktop Entry]
           Type=Application
@@ -344,10 +298,8 @@ jobs:
           Terminal=false
           Categories=System;
           EOF_TRASH
-
           chmod +x /etc/skel/Desktop/*.desktop || true
           '
-
       - name: Configure Live Environment Permissions & Cleanup Post-Install
         run: |
           sudo chroot chroot bash -ec '
@@ -356,7 +308,6 @@ jobs:
           # NOPASSWD та розширений Polkit суто для Live-режиму
           echo "ALL ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/99-live-nopasswd
           chmod 0440 /etc/sudoers.d/99-live-nopasswd
-
           cat << "EOF_POLKIT" > /etc/polkit-1/rules.d/49-live-nopasswd.rules
           polkit.addRule(function(action, subject) {
               if (subject.isInGroup("live") || subject.user == "ombra") {
@@ -364,7 +315,6 @@ jobs:
               }
           });
           EOF_POLKIT
-
           # Hook для Calamares: видалення привілеїв без пароля після інсталяції на диск
           mkdir -p /etc/calamares/scripts
           cat << "EOF_CLEANUP" > /etc/calamares/scripts/remove-live-permissions.sh
@@ -373,20 +323,17 @@ jobs:
           rm -f /target/etc/polkit-1/rules.d/49-live-nopasswd.rules
           EOF_CLEANUP
           chmod +x /etc/calamares/scripts/remove-live-permissions.sh
-
           cat << "EOF_KDE" > /etc/skel/.config/kdeglobals
           [General]
           ColorScheme=BreezeDark
           [KDE]
           LookAndFeelPackage=org.kde.breezedark.desktop
           EOF_KDE
-
           mkdir -p /etc/NetworkManager/conf.d
           cat << "EOF_NM" > /etc/NetworkManager/conf.d/no-kwallet.conf
           [main]
           systemd-resolved=true
           EOF_NM
-
           # Автоматичне встановлення значка меню «Пуск» на новий logo.png
           cat << "EOF_SCRIPT" > /usr/local/bin/ombra-init-desktop
           #!/bin/bash
@@ -418,7 +365,6 @@ jobs:
           EOF_SCRIPT
           chmod +x /usr/local/bin/ombra-init-desktop
           '
-
       - name: Configure Live User (ombra) and Guaranteed SDDM Autologin
         run: |
           sudo chroot chroot bash -ec '
@@ -434,13 +380,11 @@ jobs:
             cp -r /etc/skel/Desktop/* /home/ombra/Desktop/ || true
             chmod +x /home/ombra/Desktop/*.desktop || true
           fi
-
           if [ -f /etc/skel/.face ]; then
             cp /etc/skel/.face /home/ombra/.face || true
           fi
           
           chown -R ombra:ombra /home/ombra
-
           # SDDM Autologin
           mkdir -p /etc/sddm.conf.d
           cat << "EOF_SDDM" > /etc/sddm.conf.d/autologin.conf
@@ -448,22 +392,18 @@ jobs:
           User=ombra
           Session=
           Relogin=false
-
           [Theme]
           Current=breeze
           EOF_SDDM
-
           mkdir -p /etc/live/config.conf.d
           echo "LIVE_USERNAME=ombra" > /etc/live/config.conf.d/ombra.conf
           '
-
       - name: Unmount virtual filesystems before packing
         run: |
           sudo umount -l chroot/dev/pts || true
           sudo umount -l chroot/dev || true
           sudo umount -l chroot/proc || true
           sudo umount -l chroot/sys || true
-
       - name: Prepare ISO Structure and GRUB Boot Config
         run: |
           mkdir -p iso/live iso/boot/grub
@@ -485,7 +425,6 @@ jobs:
               initrd /live/initrd.img
           }
           EOF
-
       - name: Build ISO Image & Generate Checksum
         run: |
           BUILD_DATE=$(date +%Y.%m.%d)
@@ -495,12 +434,7 @@ jobs:
           sha256sum "${ISO_NAME}" > SHA256SUMS.txt
           
           echo "ISO_FILENAME=${ISO_NAME}" >> $GITHUB_ENV
-
       - name: Upload ISO Artifact & Checksum
         uses: actions/upload-artifact@v4
         with:
-          name: Ombra-OS-ISO
-          path: |
-            ${{ env.ISO_FILENAME }}
-            SHA256SUMS.txt
-            
+          name: Ombr
