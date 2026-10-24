@@ -432,9 +432,10 @@ jobs:
           
           grub-mkrescue -o "${ISO_NAME}" iso/
           sha256sum "${ISO_NAME}" > SHA256SUMS.txt
-          
-          echo "ISO_FILENAME=${ISO_NAME}" >> $GITHUB_ENV
       - name: Upload ISO Artifact & Checksum
         uses: actions/upload-artifact@v4
         with:
-          name: Ombr
+          name: Ombra-OS-ISO
+          path: |
+            *.iso
+            SHA256SUMS.
